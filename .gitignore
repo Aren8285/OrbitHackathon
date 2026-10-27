@@ -14,3 +14,4 @@ out/
 coverage/
 server.log
 backend/server.log
+*.log
