@@ -5,8 +5,9 @@ from app import schemas
 from app.database import get_db
 from app.services import csv_import
 from app.schemas import ImportResult
+from app.security import upload_limit
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(upload_limit)])
 
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024  # security.md: 2 MB, .csv only
 
@@ -21,7 +22,7 @@ async def _read_upload(file: UploadFile, dataset: str) -> bytes:
     return content
 
 
-@router.post('/assets', response_model=ImportResult)
+@router.post('/assets/import-csv', response_model=ImportResult)
 async def upload_assets(file: UploadFile = File(...), db: Session = Depends(get_db)):
     content = await _read_upload(file, 'assets')
     try:
@@ -34,7 +35,7 @@ async def upload_assets(file: UploadFile = File(...), db: Session = Depends(get_
     )
 
 
-@router.post('/vulnerabilities', response_model=ImportResult)
+@router.post('/vulnerabilities/import', response_model=ImportResult)
 async def upload_vulnerabilities(file: UploadFile = File(...), db: Session = Depends(get_db)):
     content = await _read_upload(file, 'vulnerabilities')
     try:
@@ -47,7 +48,7 @@ async def upload_vulnerabilities(file: UploadFile = File(...), db: Session = Dep
     )
 
 
-@router.post('/controls', response_model=ImportResult)
+@router.post('/controls/import', response_model=ImportResult)
 async def upload_controls(file: UploadFile = File(...), db: Session = Depends(get_db)):
     content = await _read_upload(file, 'controls')
     try:

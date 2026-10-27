@@ -21,7 +21,7 @@ def get_impact_assumption(asset_id: str, db: Session = Depends(get_db)):
     asset = db.scalar(select(models.Asset).where(models.Asset.asset_id == asset_id))
     if asset is None:
         raise HTTPException(status_code=404, detail=f'Asset {asset_id!r} not found')
-    assumption = risk_service.get_or_create_assumption(db, asset)
+    assumption = risk_service.get_assumption(db, asset)
     return risk_service.assumption_out(db, assumption)
 
 

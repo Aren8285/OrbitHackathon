@@ -29,7 +29,7 @@ def test_real_cves_use_local_kev_file():
 def test_real_cves_not_in_kev_file_default_false():
     flag, source = get_kev_status('CVE-2024-0001', db_value=False)
     assert flag is False
-    assert source == 'local_files'
+    assert source == 'csv_fallback'
 
 
 def test_fictional_cves_keep_database_values_and_demo_source():
@@ -44,11 +44,11 @@ def test_epss_score_from_local_file():
     assert source == 'local_files'
 
 
-def test_epss_uses_richer_of_local_and_db_for_real_cves():
+def test_epss_local_value_overrides_larger_csv_value():
     score, _ = get_epss_score('CVE-2024-5678', db_value=0.01)  # local file says 0.04991
     assert score == 0.04991
     score, _ = get_epss_score('CVE-2024-5678', db_value=0.95)  # DB is richer
-    assert score == 0.95
+    assert score == 0.04991
 
 
 def test_epss_for_fictional_cves_never_touches_local_files():

@@ -25,8 +25,8 @@ def asset_criticality(asset: models.Asset) -> float:
     )
 
 
-def get_or_create_assumption(db: Session, asset: models.Asset) -> models.ImpactAssumption:
-    """Fetch the asset's impact assumption; create the documented defaults if absent.
+def get_assumption(db: Session, asset: models.Asset) -> models.ImpactAssumption:
+    """Read the saved assumption or return unsaved defaults; never commit on reads.
     Defaults (criticality x 1 crore influence, 2 events/year, 0.5 compromise
     probability) are labeled assumptions, always visible and editable."""
     assumption = db.scalar(
@@ -35,22 +35,20 @@ def get_or_create_assumption(db: Session, asset: models.Asset) -> models.ImpactA
     if assumption is None:
         criticality = asset_criticality(asset)
         assumption = models.ImpactAssumption(
+            company_id=asset.company_id,
             asset_row_id=asset.id,
             assumed_impact_inr=int(round(criticality * scoring.DEFAULT_FULL_IMPACT_INR)),
             frequency_per_year=simulation_service.DEFAULT_FREQUENCY_PER_YEAR,
             compromise_probability=simulation_service.DEFAULT_COMPROMISE_PROBABILITY,
             basis='default',
         )
-        db.add(assumption)
-        db.commit()
-        db.refresh(assumption)
     return assumption
 
 
 def get_all_assumptions(db: Session) -> list:
-    """One assumption row per asset, creating documented defaults on first read."""
+    """One assumption row per asset, returning transient defaults without writing."""
     return [
-        get_or_create_assumption(db, asset)
+        get_assumption(db, asset)
         for asset in db.scalars(select(models.Asset).order_by(models.Asset.asset_id)).all()
     ]
 
@@ -73,13 +71,14 @@ def assumption_out(db: Session, assumption: models.ImpactAssumption) -> dict:
 
 def update_assumption(db: Session, asset: models.Asset, payload: dict) -> dict:
     """Apply only the provided assumption fields; basis flips to 'edited'."""
-    assumption = get_or_create_assumption(db, asset)
+    assumption = get_assumption(db, asset)
     if payload.get('assumed_impact_inr') is not None:
         assumption.assumed_impact_inr = int(payload['assumed_impact_inr'])
     if payload.get('frequency_per_year') is not None:
         assumption.frequency_per_year = float(payload['frequency_per_year'])
     if payload.get('compromise_probability') is not None:
         assumption.compromise_probability = float(payload['compromise_probability'])
+    db.add(assumption)
     assumption.basis = 'edited'
     db.commit()
     db.refresh(assumption)
@@ -114,7 +113,7 @@ def finding_rankings(db: Session, open_only: bool = True) -> List[dict]:
             vuln.patch_age_days,
         )
         technical_risk = scoring.compute_technical_risk(vuln.cvss_score, exposure, criticality)
-        assumption = get_or_create_assumption(db, asset)
+        assumption = get_assumption(db, asset)
         financial_impact = scoring.financial_impact_score(assumption.assumed_impact_inr)
         priority = scoring.compute_priority(
             enrichment_result['kev'],
@@ -141,11 +140,12 @@ def finding_rankings(db: Session, open_only: bool = True) -> List[dict]:
                 'financial_impact': round(financial_impact, 4),
                 'assumed_impact_inr': assumption.assumed_impact_inr,
                 'priority': round(priority, 4),
+                'priority_label': scoring.classify_priority(enrichment_result['kev'], asset.internet_facing, criticality, priority),
                 'fictional': enrichment_result['fictional'],
                 'data_source': enrichment_result['data_source'],
             }
         )
-    rows.sort(key=lambda row: (-row['priority'], -row['technical_risk'], row['asset_id'], row['cve_id']))
+    rows.sort(key=lambda row: (row['priority_label'], -row['priority'], -row['technical_risk'], row['asset_id'], row['cve_id']))
     return rows
 
 
@@ -171,7 +171,7 @@ def asset_rankings(db: Session) -> List[dict]:
     # assets without open findings still appear, ranked lowest
     result: List[dict] = []
     for asset in db.scalars(select(models.Asset)).all():
-        assumption = get_or_create_assumption(db, asset)
+        assumption = get_assumption(db, asset)
         criticality = asset_criticality(asset)
         agg = by_asset.get(asset.asset_id, {
             'open_findings': 0,
@@ -190,9 +190,10 @@ def asset_rankings(db: Session) -> List[dict]:
                 'max_technical_risk': round(agg['max_technical_risk'], 4),
                 'max_priority': round(agg['max_priority'], 4),
                 'assumed_impact_inr': assumption.assumed_impact_inr,
+                'priority_label': min((row['priority_label'] for row in analytic_rows if row['asset_id'] == asset.asset_id), default='P3'),
             }
         )
-    result.sort(key=lambda row: (-row['max_priority'], -row['criticality'], row['asset_id']))
+    result.sort(key=lambda row: (row['priority_label'], -row['max_priority'], -row['criticality'], row['asset_id']))
     return result
 
 
@@ -203,8 +204,14 @@ def summary(db: Session) -> dict:
     open_rows = [v for v in all_rows if v.status == 'open']
     ranked = finding_rankings(db, open_only=True)
     assets = db.scalars(select(models.Asset)).all()
-    total_assumed = sum(get_or_create_assumption(db, asset).assumed_impact_inr for asset in assets)
+    total_assumed = sum(get_assumption(db, asset).assumed_impact_inr for asset in assets)
+    from app.services import scenario_engine
+    portfolio = scenario_engine.portfolio(db)
     return {
+        **{key: value for key, value in portfolio.items() if key != 'scenarios'},
+        'overall_risk_score': round(sum(row['technical_risk'] for row in ranked) / len(ranked), 4) if ranked else 0.0,
+        'open_p0_p1_count': sum(row['priority_label'] in ('P0', 'P1') for row in ranked),
+        'scenario_count': len(portfolio['scenarios']),
         'total_assets': db.scalar(select(func.count()).select_from(models.Asset)) or 0,
         'critical_assets': len([a for a in assets if asset_criticality(a) >= 0.8]),
         'open_vulnerabilities': len(open_rows),
@@ -216,3 +223,38 @@ def summary(db: Session) -> dict:
             '(default = criticality x 1 crore INR); it is not a measured or simulated loss.'
         ),
     }
+
+
+def create_default_assumptions(db: Session, commit: bool = True) -> None:
+    """Persist missing defaults only during an explicit seed/calculate operation."""
+    for asset in db.scalars(select(models.Asset)).all():
+        assumption = get_assumption(db, asset)
+        if assumption.basis == 'default':
+            assumption.assumed_impact_inr = int(round(asset_criticality(asset) * scoring.DEFAULT_FULL_IMPACT_INR))
+        if assumption.id is None:
+            db.add(assumption)
+    db.commit() if commit else db.flush()
+
+
+def calculate(db, commit=True):
+    from app.services import scenario_engine, remediation_tasks
+    create_default_assumptions(db, commit=False)
+    result = scenario_engine.portfolio(db)
+    scenario_engine.persist(db, result)
+    remediation_tasks.seed_tasks(db, commit=False)
+    remediation_tasks.ensure_finding_tasks(db)
+    ranked = {(row['asset_id'], row['cve_id']): row for row in finding_rankings(db)}
+    from datetime import datetime, timedelta, timezone
+    from app.config import PRIORITY_DUE_DAYS
+    today = datetime.now(timezone(timedelta(hours=5, minutes=30))).date()
+    controls = {control.control_key: control for control in db.scalars(select(models.Control)).all()}
+    for task in db.scalars(select(models.RemediationTask)).all():
+        task.estimated_risk_reduction = scenario_engine.marginal_reduction(db, controls[task.control_key], task.asset_id)
+        finding = db.scalar(select(models.Vulnerability).where(models.Vulnerability.id == task.vulnerability_id)) if task.vulnerability_id else None
+        row = ranked.get((task.asset_id, finding.cve_id)) if finding else None
+        priority = row['priority_label'] if row else task.priority
+        if priority != task.priority:
+            task.priority = priority
+            task.due_date = today + timedelta(days=PRIORITY_DUE_DAYS[priority])
+    db.commit() if commit else db.flush()
+    return summary(db)

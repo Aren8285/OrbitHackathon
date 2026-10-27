@@ -9,7 +9,7 @@
 export type CurrencyOpts = {
   /** Show ₹ symbol. Default true for INR finance contexts. */
   currency?: boolean;
-  /** Compact magnitude labels (L / Cr) instead of full rupees. Default false. */
+  /** Compact magnitude labels (L / Cr) instead of full rupees. Default true. */
   compact?: boolean;
   /**
    * Minimum integer digits for the compact form.
@@ -22,10 +22,10 @@ export type CurrencyOpts = {
  * Format an INR amount for display.
  *
  * Examples:
- *   formatCurrency(1250000)            -> "₹12,50,000"
- *   formatCurrency(1250000, {compact:"true})    -> "₹12.50L"
- *   formatCurrency(1250000, {currency:false})  -> "12,50,000"
- *   formatCurrency(0)                  -> "₹0"
+ *   formatCurrency(1250000)            -> "₹12.50L"
+ *   formatCurrency(1250000, {compact:false}) -> "₹12,50,000"
+ *   formatCurrency(1250000, {currency:false}) -> "12.50L"
+ *   formatCurrency(0)                  -> "₹0.00L"
  */
 export function formatCurrency(
   value: number,
@@ -33,8 +33,8 @@ export function formatCurrency(
 ): string {
   const {
     currency = true,
-    compact = false,
-    compactMin = 0,
+    compact = true,
+    compactMin = 2,
   } = opts;
 
   if (value == null || !Number.isFinite(value)) {
@@ -91,7 +91,7 @@ function formatCompact(n: number, { currency, compactMin }: { currency: boolean;
     const formatted = formatDecimal(v, compactMin);
     return (currency ? '₹' : '') + sign + formatted + 'L';
   }
-  return formatCurrency(abs, { currency });
+  return (currency ? '₹' : '') + sign + (abs / 1_00_000).toFixed(Math.max(2, compactMin)) + 'L';
 }
 
 function formatDecimal(v: number, minDigits: 0 | 1 | 2): string {
@@ -153,10 +153,10 @@ export function severityColor(level: SeverityLevel): string {
 
 export function severityBadge(level: SeverityLevel): string {
   return {
-    low: 'bg-slate-500/15 text-slate-300',
-    medium: 'bg-amber-500/15 text-amber-300',
-    high: 'bg-orange-500/15 text-orange-300',
-    critical: 'bg-rose-500/15 text-rose-300',
+    low: 'risk-tag severity-low',
+    medium: 'risk-tag severity-medium',
+    high: 'risk-tag severity-high',
+    critical: 'risk-tag severity-critical',
   }[level];
 }
 
@@ -170,10 +170,13 @@ export function severityDot(level: SeverityLevel): string {
 }
 
 /** Priority (0..1) color chip. */
-export function priorityColor(value: number): string {
-  if (value >= 0.7) return 'bg-rose-500/20 text-rose-200 border-rose-500/30';
-  if (value >= 0.4) return 'bg-amber-500/20 text-amber-200 border-amber-500/30';
-  return 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30';
+export function priorityColor(label: string): string {
+  return ({
+    P0: 'priority-tag priority-p0',
+    P1: 'priority-tag priority-p1',
+    P2: 'priority-tag priority-p2',
+    P3: 'priority-tag priority-p3',
+  } as Record<string, string>)[label] ?? 'text-slate-300';
 }
 
 /** Compact control name for a table cell. */

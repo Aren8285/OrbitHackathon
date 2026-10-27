@@ -11,11 +11,14 @@ import {
   mapApiError,
   formatCurrency,
   severityLevel,
+  priorityColor,
   severityBadge,
   severityDot,
   severityLabel,
 } from '@/lib';
 import { cn } from '@/lib/format';
+import { matchesExposure } from '@/lib/view-model';
+import AssetDetails from '@/components/AssetDetails';
 
 type SortKey = keyof Pick<AssetRuntime, 'asset_name' | 'criticality' | 'asset_type'>;
 type SortDir = 'asc' | 'desc';
@@ -43,7 +46,7 @@ function SkeletonRow({ count = 6 }: { count?: number }) {
         <tr key={i}>
           <td className="px-5 py-3.5">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg skeleton" />
+              <div className="h-9 w-9 rounded-md skeleton" />
               <div className="space-y-1.5">
                 <div className="h-4 w-40 rounded skeleton" />
                 <div className="h-3 w-24 rounded skeleton" />
@@ -70,15 +73,15 @@ function SkeletonRow({ count = 6 }: { count?: number }) {
 
 function EmptyState({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-500">
-      <svg className="h-10 w-10 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+    <div className="flex flex-col items-start gap-3 py-16 text-slate-500">
+      <svg className="h-10 w-10 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
       </svg>
       <p className="text-sm">No assets loaded yet.</p>
       <button
         type="button"
         onClick={onRetry}
-        className="rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-cyan-200"
+        className="rounded-md border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-cyan-200"
       >
         Retry
       </button>
@@ -88,7 +91,7 @@ function EmptyState({ onRetry }: { onRetry: () => void }) {
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-400">
+    <div className="flex flex-col items-start gap-3 py-16 text-slate-400">
       <svg className="h-10 w-10 text-rose-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
       </svg>
@@ -96,7 +99,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
       <button
         type="button"
         onClick={onRetry}
-        className="rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-cyan-200"
+        className="rounded-md border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-cyan-200"
       >
         Retry
       </button>
@@ -157,23 +160,23 @@ function AssetImportCard({
   }, []);
 
   return (
-    <div className="rounded-xl border border-dashed border-slate-700/60 bg-slate-800/40 p-5 text-sm text-slate-400">
+    <div className="rounded-md border border-dashed border-slate-700/60 bg-slate-800/40 p-5 text-sm text-slate-400">
       <div className="mb-3 flex items-center justify-between">
         <span className="font-medium text-slate-300">Import assets via CSV</span>
         {accepting && (
-          <span className="text-[0.6rem] uppercase tracking-wider text-cyan-400">
+          <span className="text-xs   text-cyan-400">
             ready
           </span>
         )}
       </div>
 
       <p className="mb-3 text-xs text-slate-500">
-        Drops acceptance.csv from RiskOps backend /imports/assets.
+        Uploads a CSV through the protected API.
         Max 2MB, .csv only.
       </p>
 
       {error && (
-        <div className="mb-3 rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-200">
+        <div className="mb-3 rounded-md border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-200">
           {error}
           <button
             type="button"
@@ -200,7 +203,7 @@ function AssetImportCard({
           onDragLeave={handleDragLeave}
           onClick={() => inputRef.current?.click()}
           className={cn(
-            'flex flex-wrap items-center gap-3 rounded-lg border border-slate-700/50 bg-slate-900/50 px-3 py-3 text-xs text-slate-400 cursor-pointer transition-all hover:border-cyan-500/40 hover:bg-slate-800/60 hover:text-slate-200',
+            'flex flex-wrap items-center gap-3 rounded-md border border-slate-700/50 bg-slate-900/50 px-3 py-3 text-xs text-slate-400 cursor-pointer transition-all hover:border-cyan-500/40 hover:bg-slate-800/60 hover:text-slate-200',
             dragged && 'border-cyan-500/60 bg-cyan-500/5',
             !accepting && 'opacity-50 cursor-not-allowed',
           )}
@@ -209,7 +212,7 @@ function AssetImportCard({
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
           </svg>
           <span>Click or drop a CSV here</span>
-          <span className="ml-auto text-[0.55rem] uppercase tracking-wider text-slate-600">
+          <span className="ml-auto text-xs   text-slate-500">
             assets.csv
           </span>
           <input
@@ -232,21 +235,20 @@ function AssetImportCard({
 function AssetRow({
   asset,
   assumption,
+  onOpen,
 }: {
   asset: AssetRuntime;
   assumption: ImpactAssumptionRuntime | undefined;
+  onOpen: () => void;
 }) {
   const severity = severityLevel(asset.criticality / 10);
   return (
-    <tr className="hover:bg-slate-800/30 transition-colors">
+    <tr className="cursor-pointer hover:bg-slate-800/30 transition-colors" onClick={onOpen}>
       <td className="px-5 py-3.5">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/15 to-blue-500/10 border border-cyan-500/20 text-sm font-semibold text-cyan-200">
-            {asset.asset_id.split('-')[0]?.slice(0, 2) ?? '??'}
-          </div>
           <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-slate-200">{asset.asset_name}</div>
-            <div className="truncate text-xs text-slate-500">{asset.asset_id}</div>
+            <div className="truncate text-sm font-medium text-slate-200"><button type="button" onClick={event => { event.stopPropagation(); onOpen(); }} className="text-left hover:text-cyan-200">{asset.asset_name}</button> <span className={priorityColor(asset.priority_label ?? 'P3')}>{asset.priority_label}</span></div>
+            <div className="risk-id truncate text-slate-400">{asset.asset_id}</div>
           </div>
         </div>
       </td>
@@ -255,24 +257,24 @@ function AssetRow({
         <div className="flex items-center gap-2">
           <span className={cn('inline-flex h-2 w-2 rounded-full', severityDot(severity))} />
           <span className="text-sm font-medium text-slate-200">{asset.criticality}/10</span>
-          <span className={cn('rounded-full border px-1.5 py-0.5 text-[0.6rem] font-medium', severityBadge(severity))}>
+          <span className={cn('rounded border px-1.5 py-0.5 text-xs font-medium', severityBadge(severity))}>
             {severityLabel(severity)}
           </span>
         </div>
       </td>
-      <td className="px-5 py-3.5">
-        <div className="flex items-baseline gap-1">
-          <span className="text-sm font-medium tabular-nums text-slate-200">
+      <td className="numeric px-5 py-3.5">
+        <div className="flex items-baseline justify-end gap-1">
+          <span className="text-sm font-medium money text-slate-200">
             {formatCurrency(assumption?.assumed_impact_inr ?? 0, { currency: true })}
           </span>
           {assumption?.is_assumption ? (
-            <span className="ml-1 inline-flex h-4 items-center rounded-full bg-cyan-500/10 px-1.5 text-[0.55rem] uppercase tracking-wider text-cyan-300">
-              co
+            <span className="ml-1 inline-flex h-4 items-center rounded bg-cyan-500/10 px-1.5 text-xs   text-cyan-300">
+              Assumed
             </span>
           ) : null}
         </div>
         {assumption && (
-          <div className="truncate text-[0.6rem] text-slate-600">
+          <div className="truncate text-xs text-slate-500">
             {assumption.is_assumption ? 'editable assumption' : 'catalog baseline'}
           </div>
         )}
@@ -280,7 +282,7 @@ function AssetRow({
       <td className="px-5 py-3.5 text-right">
         <span
           className={cn(
-            'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+            'inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium',
             asset.internet_facing
               ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
               : 'bg-slate-800/60 text-slate-500 border border-slate-700/40',
@@ -296,6 +298,7 @@ function AssetRow({
 export default function AssetsPage() {
   const [status, setStatus] = useState<Status>('loading');
   const [assetsList, setAssetsList] = useState<AssetRuntime[]>([]);
+  const [selectedAsset, setSelectedAsset] = useState<AssetRuntime | null>(null);
   const [assumptionsList, setAssumptionsList] = useState<ImpactAssumptionRuntime[]>([]);
   const [filter, setFilter] = useState<FilterState>({ q: '', type: '', env: '', internet: '' });
   const [sort, setSort] = useState<SortState>({ key: 'asset_name', dir: 'asc' });
@@ -306,6 +309,7 @@ export default function AssetsPage() {
   const [importError, setImportError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    setStatus('loading');
     try {
       const [assetsData, assumptionsData] = await Promise.all([
         assets.list({ limit: 1000 }),
@@ -338,7 +342,7 @@ export default function AssetsPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/imports/assets`, {
+      const response = await fetch('/api/assets/import-csv', {
         method: 'POST',
         body: formData,
       });
@@ -376,7 +380,7 @@ export default function AssetsPage() {
       }
       if (filter.type && a.asset_type !== filter.type) return false;
       if (filter.env && a.environment !== filter.env) return false;
-      if (filter.internet && (filter.internet === 'internet' ? a.internet_facing : !a.internet_facing)) {
+      if (!matchesExposure(a.internet_facing, filter.internet)) {
         return false;
       }
       return true;
@@ -407,13 +411,14 @@ export default function AssetsPage() {
     }));
   };
 
-  const currentPage = page;
+  const currentPage = p;
   const displayedItems = pageItems.map((a) => (
-    <AssetRow key={a.asset_id} asset={a} assumption={assumptionMap.get(a.asset_id)} />
+    <AssetRow key={a.asset_id} asset={a} assumption={assumptionMap.get(a.asset_id)} onOpen={() => setSelectedAsset(a)} />
   ));
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
+    <div className="mx-auto max-w-[1440px] px-6 py-6">
+      {selectedAsset && <AssetDetails key={selectedAsset.asset_id} asset={selectedAsset} onClose={() => setSelectedAsset(null)} />}
       <div className="mb-6 flex items-baseline justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-100">Assets</h1>
@@ -426,7 +431,7 @@ export default function AssetsPage() {
 
       <div className="mb-5 flex flex-wrap gap-4">
         <div className="relative flex-1 min-w-[220px] max-w-sm">
-          <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
           <input
@@ -434,7 +439,7 @@ export default function AssetsPage() {
             value={filter.q}
             onChange={(e) => setFilter((f) => ({ ...f, q: e.target.value }))}
             placeholder="Search assets…"
-            className="h-9 w-full rounded-lg border border-slate-700/60 bg-slate-800/70 pl-9 pr-3 text-sm text-slate-200 placeholder-slate-600 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+            className="h-9 w-full rounded-md border border-slate-700/60 bg-slate-800/70 pl-9 pr-3 text-sm text-slate-200 placeholder-slate-600 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
           />
           {filter.q && (
             <button
@@ -451,9 +456,10 @@ export default function AssetsPage() {
         </div>
 
         <select
+          aria-label="Asset type"
           value={filter.type}
           onChange={(e) => setFilter((f) => ({ ...f, type: e.target.value }))}
-          className="h-9 rounded-lg border border-slate-700/60 bg-slate-800/70 px-3 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+          className="h-9 rounded-md border border-slate-700/60 bg-slate-800/70 px-3 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
         >
           <option value="">All types</option>
           {ASSET_TYPES.map((t) => (
@@ -462,9 +468,10 @@ export default function AssetsPage() {
         </select>
 
         <select
+          aria-label="Environment"
           value={filter.env}
           onChange={(e) => setFilter((f) => ({ ...f, env: e.target.value }))}
-          className="h-9 rounded-lg border border-slate-700/60 bg-slate-800/70 px-3 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+          className="h-9 rounded-md border border-slate-700/60 bg-slate-800/70 px-3 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
         >
           <option value="">All environments</option>
           {ENVIRONMENTS.map((e) => (
@@ -473,9 +480,10 @@ export default function AssetsPage() {
         </select>
 
         <select
+          aria-label="Exposure"
           value={filter.internet}
           onChange={(e) => setFilter((f) => ({ ...f, internet: e.target.value }))}
-          className="h-9 rounded-lg border border-slate-700/60 bg-slate-800/70 px-3 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+          className="h-9 rounded-md border border-slate-700/60 bg-slate-800/70 px-3 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
         >
           <option value="">All exposure</option>
           <option value="internet">Internet-facing</option>
@@ -486,7 +494,7 @@ export default function AssetsPage() {
           <button
             type="button"
             onClick={() => setFilter({ q: '', type: '', env: '', internet: '' })}
-            className="rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded-md border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200"
           >
             Clear filters
           </button>
@@ -495,22 +503,22 @@ export default function AssetsPage() {
 
       <div className="risk-panel overflow-hidden">
         <div className="border-b border-slate-700/40 bg-slate-900/70 px-5 py-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-slate-300">Asset Inventory</h2>
-          <AssetImportCard
+          <h2 className="text-sm font-medium text-slate-300">Asset inventory</h2>
+          <details className="w-full sm:max-w-md"><summary className="cursor-pointer text-sm text-slate-300">Import asset CSV</summary><div className="mt-2"><AssetImportCard
             onImportStart={importStart}
             importing={importing}
             error={importError}
             onClearError={() => setImportError(null)}
             accepting={importAccepting}
-          />
+          /></div></details>
         </div>
 
         {status === 'loading' && (
-          <table className="w-full">
+          <div className="table-scroll"><table className="w-full">
             <tbody className="divide-y divide-slate-700/30">
               <SkeletonRow />
             </tbody>
-          </table>
+          </table></div>
         )}
 
         {status === 'error' && (
@@ -525,10 +533,10 @@ export default function AssetsPage() {
               <EmptyState onRetry={fetchData} />
             ) : (
               <>
-                <table className="w-full">
+                <div className="table-scroll"><table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-700/40">
-                      <th className="w-[36%] px-5 py-3 text-left text-[0.65rem] uppercase tracking-widest text-slate-500">
+                      <th className="w-[36%] px-5 py-3 text-left text-xs   text-slate-500">
                         <button
                           type="button"
                           onClick={() => handleSort('asset_name')}
@@ -542,7 +550,7 @@ export default function AssetsPage() {
                           )}
                         </button>
                       </th>
-                      <th className="w-[12%] px-5 py-3 text-left text-[0.65rem] uppercase tracking-widest text-slate-500">
+                      <th className="w-[12%] px-5 py-3 text-left text-xs   text-slate-500">
                         <button
                           type="button"
                           onClick={() => handleSort('asset_type')}
@@ -556,7 +564,7 @@ export default function AssetsPage() {
                           )}
                         </button>
                       </th>
-                      <th className="w-[14%] px-5 py-3 text-left text-[0.65rem] uppercase tracking-widest text-slate-500">
+                      <th className="w-[14%] px-5 py-3 text-left text-xs   text-slate-500">
                         <button
                           type="button"
                           onClick={() => handleSort('criticality')}
@@ -570,10 +578,10 @@ export default function AssetsPage() {
                           )}
                         </button>
                       </th>
-                      <th className="w-[20%] px-5 py-3 text-left text-[0.65rem] uppercase tracking-widest text-slate-500">
-                        Assumed Impact (INR)
+                      <th className="w-[20%] px-5 py-3 text-left text-xs   text-slate-500">
+                        Assumed impact (INR)
                       </th>
-                      <th className="w-[18%] px-5 py-3 text-right text-[0.65rem] uppercase tracking-widest text-slate-500">
+                      <th className="w-[18%] px-5 py-3 text-right text-xs   text-slate-500">
                         Exposure
                       </th>
                     </tr>
@@ -581,7 +589,7 @@ export default function AssetsPage() {
                   <tbody className="divide-y divide-slate-700/30">
                     {displayedItems}
                   </tbody>
-                </table>
+                </table></div>
 
                 {total > PAGE_SIZE && (
                   <div className="border-t border-slate-700/40 bg-slate-900/70 px-5 py-3 flex items-center justify-between">
@@ -594,7 +602,7 @@ export default function AssetsPage() {
                         type="button"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={currentPage <= 1}
-                        className="rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="rounded-md border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Previous
                       </button>
@@ -605,7 +613,7 @@ export default function AssetsPage() {
                         type="button"
                         onClick={() => setPage((p) => Math.min(pages, p + 1))}
                         disabled={currentPage >= pages}
-                        className="rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="rounded-md border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Next
                       </button>
@@ -618,7 +626,7 @@ export default function AssetsPage() {
         )}
       </div>
 
-      <div className="mt-4 text-[0.6rem] text-slate-600">
+      <div className="mt-4 text-xs text-slate-500">
         Import reads the same columns the app uses: asset_id, asset_name, asset_type, environment,
         owner, business_unit, criticality, data_classification, internet_facing,
         revenue_dependency, operational_impact, compliance_impact.

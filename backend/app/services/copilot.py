@@ -9,11 +9,11 @@ Security rules implemented here (security.md / TASK 5):
   to treat the JSON as data, never as instructions, and never to invent
   numbers. Output text is scanned with llm.unapproved_numbers(); any invented
   figure discards the reply and the deterministic fallback renders instead.
-- No user text is ever sent (GET /ai/explain takes no request body), so
-  prompt injection through this endpoint is not possible.
+- Short names/titles are untrusted data; prompts and numeric validation
+  prevent them from changing calculated metrics.
 """
 
-from typing import Dict, Optional
+import json
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -25,7 +25,7 @@ from app.services import llm, optimizer as optimizer_service, risk_service, simu
 DISCLAIMER = (
     'All figures above come from the RiskOps scoring, simulation and optimizer '
     'engines on the current database. The AI never generates its own numbers; '
-    'losses are rounded to 1,000 INR.'
+    'losses are rounded to integer INR.'
 )
 
 DATA_SOURCES_NOTE = (
@@ -43,49 +43,18 @@ def build_metrics(db: Session) -> dict:
     """Compute the validated metrics the copilot may narrate."""
     summary_out = risk_service.summary(db)
 
-    rankings = risk_service.asset_rankings(db)
-    scenario_asset_id = DEMO_SCENARIO_ASSET_ID if any(
-        row['asset_id'] == DEMO_SCENARIO_ASSET_ID for row in rankings
-    ) else (rankings[0]['asset_id'] if rankings else '')
-
-    expected_loss = p50 = p95 = 0
-    recommendations: list = []
-    if scenario_asset_id:
-        asset = db.scalar(select(models.Asset).where(models.Asset.asset_id == scenario_asset_id))
-        if asset is not None:
-            sim = simulation_service.run_for_asset(db, asset)
-            expected_loss = int(sim['expected_annual_loss_inr'])
-            p50 = int(sim['p50_inr'])
-            p95 = int(sim['p95_inr'])
-
-            budget = int(settings.default_budget)
-            assumption = risk_service.get_or_create_assumption(db, asset)
-            candidates = [
-                optimizer_service.ControlCandidate(
-                    control_key=c.control_key,
-                    control_name=c.control_name,
-                    annual_cost_inr=c.annual_cost,
-                    effectiveness=c.eff_likely,
-                )
-                for c in db.scalars(select(models.Control)).all()
-            ]
-            opt = optimizer_service.optimize_portfolio(
-                candidates, assumption.assumed_impact_inr, budget
-            )
-            recommendations = [
-                {
-                    'control_key': row['control_key'],
-                    'control_name': row['control_name'],
-                    'annual_cost_inr': int(row['annual_cost_inr']),
-                    'effectiveness': float(row['effectiveness']),
-                    'marginal_benefit_inr': int(row['marginal_benefit_inr']),
-                }
-                for row in opt['recommended_controls'][:TOP_RISK_LIMIT]
-            ]
+    from app.services import scenario_engine
+    sim = scenario_engine.portfolio(db)
+    scenario_asset_id = 'portfolio'
+    expected_loss, p50, p95 = sim['expected_annual_loss_inr'], sim['p50_inr'], sim['p95_inr']
+    opt = optimizer_service.recommend(db, int(settings.default_budget))
+    recommendations = [{key: row[key] for key in ('control_key', 'control_name', 'annual_cost_inr', 'effectiveness', 'marginal_benefit_inr')}
+                       for row in opt['recommended_controls'][:TOP_RISK_LIMIT]]
 
     top_risks = [
         {
             'rank': index,
+            'priority_label': row['priority_label'],
             'asset_id': row['asset_id'],
             'cve_id': row['cve_id'],
             'title': row['title'][:200],  # security.md: short names only
@@ -118,49 +87,27 @@ def build_metrics(db: Session) -> dict:
 
 def validated_metrics(metrics: dict) -> schemas.CopilotMetrics:
     """Validate the metrics through the Pydantic model before any LLM use."""
-    return schemas.CopilotMetrics(**metrics)
+    return schemas.CopilotMetrics(**llm.truncate_text_fields(metrics))
 
 
-def explain(metrics: dict) -> dict:
-    """Try the LLM; fall back deterministically whenever it cannot comply."""
+def explain(metrics: dict, kind: str = 'explain-risk') -> dict:
+    """Only valid calculated-number text is served; every failure uses template."""
     validated = validated_metrics(metrics).model_dump()
-    allowed = llm.build_allowed(validated)
-    fallback_reason: Optional[str] = None
-    model = None
-    source = 'fallback'
-
-    if not settings.openai_api_key:
-        fallback_reason = 'no LLM API key configured on the server'
+    reason = None
+    if settings.llm_provider != 'gemini' or not settings.gemini_api_key:
+        reason = 'Gemini provider disabled or key missing'
     else:
-        system_prompt, user_prompt = llm.build_prompts(validated)
         try:
-            reply = llm.call_llm(system_prompt, user_prompt)
+            system_prompt, user_prompt = llm.build_prompts(validated, kind)
+            reply, model = llm.call_llm(system_prompt, user_prompt)
+            if llm.reply_is_valid(reply, json.loads(user_prompt)):
+                llm.record_model(model)
+                return dict(explanation=reply, source='llm', model=model, fallback_reason=None,
+                            metrics=validated, disclaimer=DISCLAIMER)
+            reason = 'Gemini reply discarded: numeric or length validation failed'
         except llm.LLMError as exc:
-            fallback_reason = str(exc)
-        else:
-            unapproved = llm.unapproved_numbers(reply, allowed)
-            if unapproved:
-                fallback_reason = (
-                    'LLM reply discarded: contained numbers absent from the '
-                    f'metrics ({", ".join(unapproved[:5])})'
-                )
-            else:
-                source = 'llm'
-                model = settings.openai_model
-                return {
-                    'explanation': reply,
-                    'source': source,
-                    'model': model,
-                    'fallback_reason': None,
-                    'metrics': validated,
-                    'disclaimer': DISCLAIMER,
-                }
-
-    return {
-        'explanation': llm.build_fallback(validated),
-        'source': source,
-        'model': None,
-        'fallback_reason': fallback_reason,
-        'metrics': validated,
-        'disclaimer': DISCLAIMER,
-    }
+            reason = str(exc)
+        except Exception:
+            reason = 'Gemini request failed; template explanation used'
+    return dict(explanation=llm.build_fallback(validated), source='fallback', model='template',
+                fallback_reason=reason, metrics=validated, disclaimer=DISCLAIMER)

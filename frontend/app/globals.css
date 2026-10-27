@@ -2,227 +2,114 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
- * RiskOps design tokens — "underwriting ledger"
- *
- * A flat, ink-dark surface with hairline separation instead of glow and
- * gradients. One working accent (azure) for data and interaction; severity
- * colors (rose / amber / emerald) carry meaning only — they mark state, never
- * decorate. Cards share one radius, one border weight, no shadows except a
- * single restrained elevation on the shell.
- */
 :root {
-  /* surfaces */
-  --surface-page: #070c16;
-  --surface-rail: #0a101e;
-  --surface-panel: #0c1424;
-  --surface-raised: #101a2e;
-  --surface-inset: #0a1222;
-
-  /* hairlines */
-  --hairline: rgba(148, 163, 184, 0.1);
-  --hairline-strong: rgba(148, 163, 184, 0.18);
-
-  /* text */
-  --ink-primary: #e3ebf7;
-  --ink-secondary: #97a6bf;
-  --ink-muted: #5f7392;
-  --ink-faint: #3d4c66;
-
-  /* one accent + data-viz cyan */
-  --accent: #3e8bff;
-  --accent-soft: rgba(62, 139, 255, 0.14);
-  --data-cyan: #22d3ee;
-
-  /* severity — meaning, not decoration */
-  --severity-rose: #f87171;
-  --severity-amber: #f5b93f;
-  --severity-emerald: #3ecf8e;
+  --surface-page: #111418;
+  --surface-rail: #15191e;
+  --surface-panel: #191e24;
+  --surface-raised: #232a32;
+  --surface-inset: #14191f;
+  --hairline: #303740;
+  --hairline-strong: #48525d;
+  --ink-primary: #e6e8ea;
+  --ink-secondary: #bcc3ca;
+  --ink-muted: #8f9aa5;
+  --ink-faint: #8f9aa5;
+  --accent: #9cb7ca;
+  --accent-soft: #25333e;
+  --data-cyan: #9cb7ca;
+  --severity-rose: #ce918b;
+  --severity-amber: #c4ad7d;
+  --severity-emerald: #a1b89e;
 }
+* { box-sizing: border-box; }
+html { color-scheme: dark; -webkit-font-smoothing: antialiased; }
+body { margin: 0; min-height: 100vh; background: var(--surface-page); color: var(--ink-primary); font-size: 14px; line-height: 1.5; }
+::selection { background: #3a4d5c; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+h1 { font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: -.025em; }
+h2 { font-size: 16px; line-height: 24px; font-weight: 600; }
+h3 { font-size: 14px; line-height: 20px; font-weight: 500; }
+button, input, select { font: inherit; }
+button { border-radius: 4px; }
+button:disabled { cursor: not-allowed; }
+input:not([type=checkbox]):not([type=range]), select { min-height: 32px; border: 1px solid var(--hairline-strong); border-radius: 4px; background: var(--surface-inset); color: var(--ink-primary); }
+input[type=checkbox], input[type=range] { accent-color: var(--accent); }
+select { padding: 4px 24px 4px 8px; }
+option { background: var(--surface-panel); }
+.risk-panel { border: 1px solid var(--hairline); border-radius: 6px; background: var(--surface-panel); }
+.risk-panel-strong { border-color: var(--hairline-strong); }
+.risk-panel-header { border-bottom: 1px solid var(--hairline); }
+.risk-inset { border: 1px solid var(--hairline-strong); border-radius: 4px; background: var(--surface-inset); }
+.risk-id, .money, .tabular-nums, code { font-family: var(--font-mono), monospace; font-variant-numeric: tabular-nums; }
+.risk-id { font-size: 12px; }
+.text-balance { text-wrap: balance; }
+.table-scroll { width: 100%; max-height: 68vh; overflow: auto; border-radius: 4px; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+th { position: sticky; top: 0; z-index: 2; background: #20262d; font-weight: 500; color: var(--ink-secondary); white-space: nowrap; }
+th, td { padding: 8px 16px !important; border-bottom: 1px solid var(--hairline); text-align: left; vertical-align: middle; }
+tbody tr:hover { background: #20262d; }
+tbody tr:last-child td { border-bottom: 0; }
+th.numeric, td.numeric { text-align: right; font-family: var(--font-mono), monospace; }
+.priority-tag, .risk-tag { display: inline-flex; align-items: center; gap: 4px; border: 1px solid transparent; border-radius: 4px; padding: 0 6px; font: 500 12px/20px var(--font-mono), monospace; white-space: nowrap; }
+.priority-p0, .severity-critical, .kev-tag { color: #ddb0ab; background: #352729; border-color: #64423f; }
+.priority-p1, .severity-high { color: #dbc0a0; background: #332d25; border-color: #63513d; }
+.priority-p2, .severity-medium { color: #d4c798; background: #302e24; border-color: #5c563e; }
+.priority-p3, .severity-low { color: #bed0bd; background: #253028; border-color: #465b47; }
+.kpi-strip { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border-top: 1px solid var(--hairline-strong); border-bottom: 1px solid var(--hairline-strong); background: transparent; }
+.kpi-strip > * { min-width: 0; padding: 16px; border-right: 1px solid var(--hairline); border-radius: 0; background: transparent; }
+.kpi-strip > :first-child { padding-left: 0; }
+.kpi-strip > :last-child { border-right: 0; }
+.kpi-label { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.kpi-value { margin-top: 8px; font-family: var(--font-mono), monospace; font-size: 28px; line-height: 36px; color: var(--ink-primary); letter-spacing: -.04em; white-space: nowrap; }
+.kpi-detail { margin-top: 4px; color: var(--ink-muted); font-size: 12px; }
+.kpi-strip-two { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.skeleton { border-radius: 4px; background: var(--surface-raised); }
+.skeleton::after { content: none; }
+.recharts-wrapper { font: 12px var(--font-sans), sans-serif; }
+.recharts-cartesian-axis-tick-value { fill: var(--ink-muted); }
+.recharts-cartesian-axis-line, .recharts-cartesian-axis-tick-line { stroke: var(--hairline-strong); stroke-width: 1; }
+.recharts-tooltip-wrapper .recharts-default-tooltip { background: var(--surface-panel) !important; border: 1px solid var(--hairline-strong) !important; border-radius: 4px; font-family: var(--font-mono), monospace; }
+.recharts-legend-item-text { color: var(--ink-secondary) !important; }
+.recharts-reference-line text { font-family: var(--font-mono), monospace; fill: var(--ink-secondary); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #48525d; border: 2px solid var(--surface-page); border-radius: 4px; }
+.app-rail { position: fixed; inset: 0 auto 0 0; z-index: 30; width: 208px; display: flex; flex-direction: column; border-right: 1px solid var(--hairline); background: var(--surface-rail); }
+.app-column { min-width: 0; width: 100%; padding-left: 208px; }
+.app-header { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--hairline); background: var(--surface-page); }
+.app-desktop-bar { display: flex; align-items: center; justify-content: space-between; height: 48px; padding: 0 24px; }
+.app-mobile-bar, .app-mobile-nav { display: none; }
+.page-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.page-actions { display: flex; align-items: center; gap: 8px; }
+.control-constraints { margin-top: 16px; max-height: 400px; overflow: auto; }
+.constraint-row { display: grid; grid-template-columns: minmax(0,1fr) 112px 112px; align-items: center; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--hairline); }
+.constraint-row p { display: flex; justify-content: space-between; gap: 16px; }
+.remediation-register { display: flex; flex-direction: column; gap: 24px; }
+.remediation-register section { padding: 0; overflow: hidden; }
+.remediation-register h2 { padding: 12px 16px; border-bottom: 1px solid var(--hairline); }
+@media (min-width:768px) and (max-width:1100px) {
+  .app-rail { width: 176px; }
+  .app-column { padding-left: 176px; }
+  .app-desktop-bar { padding: 0 16px; }
+  .kpi-strip > * { padding: 16px 8px; }
+  .kpi-value { font-size: 20px; line-height: 28px; }
+}
+@media (max-width:767px) {
+  .app-rail, .app-desktop-bar { display: none; }
+  .app-column { padding-left: 0; }
+  .app-mobile-bar { display: flex; height: 48px; align-items: center; justify-content: space-between; padding: 0 16px; }
+  .app-mobile-nav { display: flex; overflow-x: auto; padding: 0 8px 8px; }
+  .kpi-strip { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .kpi-strip > :nth-child(2) { border-right: 0; }
+  .kpi-strip > :nth-child(n+3) { border-top: 1px solid var(--hairline); }
+  .kpi-strip > :nth-child(3) { padding-left: 0; }
+  .kpi-value { font-size: 20px; line-height: 28px; }
+  .page-heading { flex-wrap: wrap; }
+  .constraint-row { grid-template-columns: minmax(0,1fr) 88px 72px; gap: 8px; }
+  .constraint-row p { flex-direction: column; gap: 0; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+.kpi-strip .kpi-value.text-xl { font-size: 20px; line-height: 28px; }
+@media (min-width:768px) and (max-width:1100px) { .page-heading { flex-wrap: wrap; } .kpi-strip { overflow-x: auto; } }
 
-html {
-  color-scheme: dark;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  background-color: var(--surface-page);
-  color: var(--ink-primary);
-  min-height: 100vh;
-}
-
-::selection {
-  background: rgba(62, 139, 255, 0.35);
-}
-
-/* ------------------------------------------------------------------ */
-/* Focus                                                              */
-/* ------------------------------------------------------------------ */
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
-
-/* ------------------------------------------------------------------ */
-/* Cards & panels                                                     */
-/* ------------------------------------------------------------------ */
-/*
- * Every panel is the same shell: one hairline, one radius, one inset rail.
- * Panels that need emphasis get a stronger hairline, not a glow.
- */
-.risk-panel {
-  background-color: var(--surface-panel);
-  border: 1px solid var(--hairline);
-  border-radius: 10px;
-}
-
-.risk-panel-strong {
-  border-color: var(--hairline-strong);
-}
-
-.risk-panel-header {
-  border-bottom: 1px solid var(--hairline);
-}
-
-.risk-inset {
-  background-color: var(--surface-inset);
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-}
-
-/* ------------------------------------------------------------------ */
-/* Text helpers                                                       */
-/* ------------------------------------------------------------------ */
-.text-balance {
-  text-wrap: balance;
-}
-
-/* identifiers only (CVE / asset codes), not general labels */
-.risk-id {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.72rem;
-  letter-spacing: 0.02em;
-  color: var(--ink-muted);
-}
-
-/* ------------------------------------------------------------------ */
-/* Skeleton loading — the pages use `skeleton` everywhere; this makes  */
-/* the shimmer actually visible (previously undefined and invisible). */
-/* ------------------------------------------------------------------ */
-.skeleton {
-  background-color: var(--surface-raised);
-  border-radius: 4px;
-  position: relative;
-  overflow: hidden;
-}
-
-.skeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(148, 163, 184, 0.08) 50%,
-    transparent 100%
-  );
-  animation: risk-shimmer 1.6s ease-in-out infinite;
-}
-
-@keyframes risk-shimmer {
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* Motion — one quiet entrance, then rest.                            */
-/* ------------------------------------------------------------------ */
-@keyframes risk-rise {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.risk-rise {
-  animation: risk-rise 0.3s ease-out both;
-}
-
-.risk-rise-1 {
-  animation-delay: 0.03s;
-}
-.risk-rise-2 {
-  animation-delay: 0.06s;
-}
-.risk-rise-3 {
-  animation-delay: 0.09s;
-}
-.risk-rise-4 {
-  animation-delay: 0.12s;
-}
-
-/* ------------------------------------------------------------------ */
-/* Scrollbar — quiet, only hairline-visible                           */
-/* ------------------------------------------------------------------ */
-::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.16);
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.28);
-}
-
-/* ------------------------------------------------------------------ */
-/* Charts                                                             */
-/* ------------------------------------------------------------------ */
-.recharts-wrapper {
-  font-size: 12px;
-}
-
-.recharts-cartesian-axis-tick-value {
-  fill: var(--ink-muted);
-}
-
-/* ------------------------------------------------------------------ */
-/* Motion safety                                                      */
-/* ------------------------------------------------------------------ */
-@media (prefers-reduced-motion: reduce) {
-  .skeleton::after,
-  .risk-rise,
-  .risk-rise-1,
-  .risk-rise-2,
-  .risk-rise-3,
-  .risk-rise-4 {
-    animation: none;
-  }
-
-  html {
-    scroll-behavior: auto;
-  }
-}
+@media (min-width:768px) and (max-width:1100px) { .kpi-strip .kpi-value.text-xl { font-size: 14px; line-height: 20px; } }

@@ -5,10 +5,10 @@ import type { VulnerabilityRuntime } from '@/lib';
 import { api, mapApiError, formatNumber } from '@/lib';
 import {
   cn,
-  severityBadge,
   severityColor,
   severityDot,
   severityLevel,
+  priorityColor,
 } from '@/lib/format';
 
 type Status = 'loading' | 'ready' | 'empty' | 'error';
@@ -19,7 +19,7 @@ type SortState = { key: SortKey; dir: 'asc' | 'desc' };
 const PAGE_SIZE = 20;
 
 function VulnerabilityRow({ vuln }: { vuln: VulnerabilityRuntime }) {
-  const severity = severityLevel(vuln.cvss_score);
+  const severity = severityLevel(vuln.cvss_score / 10);
   return (
     <tr className="group transition-colors hover:bg-slate-800/30">
       <td className="px-5 py-3.5">
@@ -30,7 +30,8 @@ function VulnerabilityRow({ vuln }: { vuln: VulnerabilityRuntime }) {
               <span className="font-mono text-sm font-semibold text-slate-100">
                 {vuln.cve_id}
               </span>
-              {vuln.is_kev && <span className={severityBadge(severity)}>KEV</span>}
+              <span className={priorityColor(vuln.priority_label)}>{vuln.priority_label}</span>
+              {vuln.is_kev && <span className="risk-tag kev-tag">KEV</span>}
             </div>
             <div className="mt-0.5 max-w-[26rem] truncate text-xs text-slate-500">
               {vuln.title}
@@ -42,7 +43,7 @@ function VulnerabilityRow({ vuln }: { vuln: VulnerabilityRuntime }) {
       <td className="px-5 py-3.5 text-right">
         <span
           className={cn(
-            'inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-xs tabular-nums',
+            'inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs tabular-nums',
             severityColor(severity),
           )}
         >
@@ -58,7 +59,7 @@ function VulnerabilityRow({ vuln }: { vuln: VulnerabilityRuntime }) {
       <td className="px-5 py-3.5 text-right">
         <span
           className={cn(
-            'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium',
+            'inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium',
             vuln.status === 'open'
               ? 'border-amber-500/25 bg-amber-500/10 text-amber-300'
               : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300',
@@ -70,7 +71,7 @@ function VulnerabilityRow({ vuln }: { vuln: VulnerabilityRuntime }) {
       <td className="px-5 py-3.5 text-right">
         <span
           className={cn(
-            'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+            'inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium',
             vuln.patch_available
               ? 'border border-cyan-500/20 bg-cyan-500/15 text-cyan-300'
               : 'border border-slate-700/40 bg-slate-800/60 text-slate-500',
@@ -92,6 +93,7 @@ export default function VulnerabilitiesPage() {
   const [page, setPage] = useState(1);
 
   const fetchData = useCallback(async () => {
+    setStatus('loading');
     try {
       const data = await api.vulnerabilities.list();
       setVulns(data);
@@ -160,7 +162,7 @@ export default function VulnerabilitiesPage() {
     <button
       type="button"
       onClick={() => handleSort(key)}
-      className="inline-flex items-center gap-1 uppercase tracking-widest transition-colors hover:text-cyan-300"
+      className="inline-flex items-center gap-1   transition-colors hover:text-cyan-300"
     >
       {label}
       {sort.key === key && <span>{sort.dir === 'asc' ? '↑' : '↓'}</span>}
@@ -168,7 +170,7 @@ export default function VulnerabilitiesPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6">
+    <div className="mx-auto w-full max-w-[1440px] px-6 py-6">
       {/* header + stats */}
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -176,43 +178,42 @@ export default function VulnerabilitiesPage() {
             Vulnerabilities
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            CVEs recorded per asset. Widen the table on smaller screens by swiping
-            horizontally.
+            Findings by asset, with CVSS, EPSS, KEV status and remediation priority.
           </p>
         </div>
       </div>
 
       {/* stats strip */}
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-slate-700/40 bg-slate-900/50 p-4">
-          <div className="text-[0.65rem] uppercase tracking-widest text-slate-500">
+      <div className="kpi-strip mb-6">
+        <div className="kpi-item">
+          <div className="text-xs   text-slate-500">
             Total CVEs
           </div>
-          <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-100">
+          <div className="kpi-value">
             {formatNumber(stats.total)}
           </div>
         </div>
-        <div className="rounded-xl border border-slate-700/40 bg-slate-900/50 p-4">
-          <div className="text-[0.65rem] uppercase tracking-widest text-slate-500">
+        <div className="kpi-item">
+          <div className="text-xs   text-slate-500">
             Open
           </div>
-          <div className="mt-1 text-2xl font-semibold tabular-nums text-amber-200">
+          <div className="kpi-value">
             {formatNumber(stats.open)}
           </div>
         </div>
-        <div className="rounded-xl border border-slate-700/40 bg-slate-900/50 p-4">
-          <div className="text-[0.65rem] uppercase tracking-widest text-slate-500">
+        <div className="kpi-item">
+          <div className="text-xs   text-slate-500">
             KEV listed
           </div>
-          <div className="mt-1 text-2xl font-semibold tabular-nums text-rose-200">
+          <div className="kpi-value">
             {formatNumber(stats.kev)}
           </div>
         </div>
-        <div className="rounded-xl border border-slate-700/40 bg-slate-900/50 p-4">
-          <div className="text-[0.65rem] uppercase tracking-widest text-slate-500">
+        <div className="kpi-item">
+          <div className="text-xs   text-slate-500">
             Worst CVSS
           </div>
-          <div className="mt-1 text-2xl font-semibold tabular-nums text-cyan-200">
+          <div className="kpi-value">
             {stats.worst.toFixed(1)}
             <span className="ml-2 text-sm font-normal text-slate-500">
               avg {stats.avgCvss.toFixed(1)}
@@ -222,7 +223,7 @@ export default function VulnerabilitiesPage() {
       </div>
 
       {status === 'error' && (
-        <div className="mb-6 rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-sm text-rose-200">
+        <div className="mb-6 rounded-md border border-rose-500/20 bg-rose-500/5 p-4 text-sm text-rose-200">
           {error}
           <button
             type="button"
@@ -255,7 +256,7 @@ export default function VulnerabilitiesPage() {
                 setPage(1);
               }}
               placeholder="Search CVE, asset or title…"
-              className="h-9 w-64 rounded-lg border border-slate-700/50 bg-slate-900/60 px-3 text-sm text-slate-200 placeholder-slate-600 focus:border-cyan-500/50 focus:outline-none"
+              className="h-9 w-64 rounded-md border border-slate-700/50 bg-slate-900/60 px-3 text-sm text-slate-200 placeholder-slate-600 focus:border-cyan-500/50 focus:outline-none"
             />
             <div className="flex items-center gap-1.5">
               {[
@@ -271,7 +272,7 @@ export default function VulnerabilitiesPage() {
                     setPage(1);
                   }}
                   className={cn(
-                    'rounded-lg border px-2.5 py-1 text-xs transition-colors',
+                    'rounded-md border px-2.5 py-1 text-xs transition-colors',
                     filter.kev === opt.value
                       ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-200'
                       : 'border-slate-700/50 bg-slate-900/40 text-slate-400 hover:border-cyan-500/30 hover:text-cyan-200',
@@ -295,7 +296,7 @@ export default function VulnerabilitiesPage() {
                     setPage(1);
                   }}
                   className={cn(
-                    'rounded-lg border px-2.5 py-1 text-xs transition-colors',
+                    'rounded-md border px-2.5 py-1 text-xs transition-colors',
                     filter.status === opt.value
                       ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-200'
                       : 'border-slate-700/50 bg-slate-900/40 text-slate-400 hover:border-cyan-500/30 hover:text-cyan-200',
@@ -312,29 +313,29 @@ export default function VulnerabilitiesPage() {
 
           {/* table */}
           <div className="overflow-hidden risk-panel">
-            <div className="overflow-x-auto">
+            <div className="table-scroll">
               <table className="w-full min-w-[52rem]">
                 <thead>
                   <tr className="border-b border-slate-700/40 bg-slate-900/70">
-                    <th className="px-5 py-3 text-left text-[0.65rem] font-medium uppercase text-slate-500">
+                    <th className="px-5 py-3 text-left text-xs font-medium  text-slate-500">
                       {header('CVE', 'cve_id')}
                     </th>
-                    <th className="px-5 py-3 text-left text-[0.65rem] font-medium uppercase text-slate-500">
+                    <th className="px-5 py-3 text-left text-xs font-medium  text-slate-500">
                       {header('Asset', 'asset_id')}
                     </th>
-                    <th className="px-5 py-3 text-right text-[0.65rem] font-medium uppercase text-slate-500">
+                    <th className="px-5 py-3 text-right text-xs font-medium  text-slate-500">
                       {header('CVSS', 'cvss_score')}
                     </th>
-                    <th className="px-5 py-3 text-right text-[0.65rem] font-medium uppercase text-slate-500">
+                    <th className="px-5 py-3 text-right text-xs font-medium  text-slate-500">
                       {header('EPSS', 'epss_score')}
                     </th>
-                    <th className="px-5 py-3 text-right text-[0.65rem] font-medium uppercase text-slate-500">
+                    <th className="px-5 py-3 text-right text-xs font-medium  text-slate-500">
                       {header('Patch age', 'patch_age_days')}
                     </th>
-                    <th className="px-5 py-3 text-right text-[0.65rem] font-medium uppercase text-slate-500">
+                    <th className="px-5 py-3 text-right text-xs font-medium  text-slate-500">
                       Status
                     </th>
-                    <th className="px-5 py-3 text-right text-[0.65rem] font-medium uppercase text-slate-500">
+                    <th className="px-5 py-3 text-right text-xs font-medium  text-slate-500">
                       Patch
                     </th>
                   </tr>
@@ -359,7 +360,7 @@ export default function VulnerabilitiesPage() {
                   type="button"
                   onClick={() => setPage((x) => Math.max(1, x - 1))}
                   disabled={p <= 1}
-                  className="rounded-lg border border-slate-700/50 px-3 py-1 text-xs text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-cyan-200 disabled:opacity-40"
+                  className="rounded-md border border-slate-700/50 px-3 py-1 text-xs text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-cyan-200 disabled:opacity-40"
                 >
                   Prev
                 </button>
@@ -370,7 +371,7 @@ export default function VulnerabilitiesPage() {
                   type="button"
                   onClick={() => setPage((x) => Math.min(pages, x + 1))}
                   disabled={p >= pages}
-                  className="rounded-lg border border-slate-700/50 px-3 py-1 text-xs text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-cyan-200 disabled:opacity-40"
+                  className="rounded-md border border-slate-700/50 px-3 py-1 text-xs text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-cyan-200 disabled:opacity-40"
                 >
                   Next
                 </button>

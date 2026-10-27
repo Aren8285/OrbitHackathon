@@ -1,7 +1,7 @@
 /**
  * Low-level fetch helper used by every API module.
  *
- * Single origin: `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`).
+ * Same-origin Next.js proxy; credentials are added only on the server.
  */
 
 export type ApiFetchOptions = RequestInit & {
@@ -9,10 +9,7 @@ export type ApiFetchOptions = RequestInit & {
   baseUrl?: string;
 };
 
-const BASE_URL =
-  typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL
-    ? process.env.NEXT_PUBLIC_API_URL
-    : 'http://localhost:8000';
+const BASE_URL = '/api';
 
 export async function apiFetch<T>(
   path: string,

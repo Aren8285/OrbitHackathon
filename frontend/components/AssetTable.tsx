@@ -12,7 +12,7 @@ function SkeletonRow() {
     <tr>
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg skeleton" />
+          <div className="h-8 w-8 rounded-md skeleton" />
           <div className="space-y-1.5">
             <div className="h-4 w-32 rounded skeleton" />
             <div className="h-3 w-24 rounded skeleton" />
@@ -37,8 +37,8 @@ function SkeletonRow() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-500">
-      <svg className="h-10 w-10 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+    <div className="flex flex-col items-start gap-2 py-16 text-slate-500">
+      <svg className="h-10 w-10 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
       </svg>
       <p className="text-sm">No assets loaded yet.</p>
@@ -48,16 +48,16 @@ function EmptyState() {
 
 function ErrorState({ error, onRetry }: { error: string | null; onRetry: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-400">
+    <div className="flex flex-col items-start gap-2 py-16 text-slate-400">
       <svg className="h-10 w-10 text-rose-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
       </svg>
       <p className="text-sm">Unable to load assets.</p>
-      {error && <p className="text-xs text-slate-600">{error}</p>}
+      {error && <p className="text-xs text-slate-500">{error}</p>}
       <button
         type="button"
         onClick={onRetry}
-        className="mt-2 rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-cyan-200"
+        className="mt-2 rounded-md border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-cyan-200"
       >
         Retry
       </button>
@@ -146,7 +146,7 @@ export default function AssetTable() {
   const selected = filtered[0];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
+    <div className="mx-auto max-w-[1440px] px-6 py-6">
       {/* header */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-100">Assets</h1>
@@ -159,7 +159,7 @@ export default function AssetTable() {
       <div className="mb-5 flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <svg
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -176,7 +176,7 @@ export default function AssetTable() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter by name, ID, owner…"
-            className="h-9 w-full rounded-lg border border-slate-700/60 bg-slate-800/70 pl-9 pr-3 text-sm text-slate-200 placeholder-slate-600 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+            className="h-9 w-full rounded-md border border-slate-700/60 bg-slate-800/70 pl-9 pr-3 text-sm text-slate-200 placeholder-slate-600 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
           />
           {filter && (
             <button
@@ -202,7 +202,7 @@ export default function AssetTable() {
       {/* table */}
       <div className="risk-panel overflow-hidden">
         <div className="border-b border-slate-700/40 bg-slate-900/70 px-5 py-3">
-          <h2 className="text-sm font-medium text-slate-300">Asset Inventory</h2>
+          <h2 className="text-sm font-medium text-slate-300">Asset inventory</h2>
         </div>
 
         {state === 'loading' && (
@@ -226,19 +226,19 @@ export default function AssetTable() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-700/40">
-                  <th className="w-[36%] px-5 py-3 text-left text-[0.65rem] uppercase tracking-widest text-slate-500">
+                  <th className="w-[36%] px-5 py-3 text-left text-xs   text-slate-500">
                     Asset
                   </th>
-                  <th className="w-[12%] px-5 py-3 text-left text-[0.65rem] uppercase tracking-widest text-slate-500">
+                  <th className="w-[12%] px-5 py-3 text-left text-xs   text-slate-500">
                     Type
                   </th>
-                  <th className="w-[14%] px-5 py-3 text-left text-[0.65rem] uppercase tracking-widest text-slate-500">
+                  <th className="w-[14%] px-5 py-3 text-left text-xs   text-slate-500">
                     Criticality
                   </th>
-                  <th className="w-[20%] px-5 py-3 text-left text-[0.65rem] uppercase tracking-widest text-slate-500">
+                  <th className="w-[20%] px-5 py-3 text-left text-xs   text-slate-500">
                     Assumed Impact (INR)
                   </th>
-                  <th className="w-[18%] px-5 py-3 text-right text-[0.65rem] uppercase tracking-widest text-slate-500">
+                  <th className="w-[18%] px-5 py-3 text-right text-xs   text-slate-500">
                     Internet
                   </th>
                 </tr>
@@ -255,7 +255,7 @@ export default function AssetTable() {
                     >
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/15 to-blue-500/10 border border-cyan-500/20 text-sm font-semibold text-cyan-200">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md    border border-cyan-500/20 text-sm font-semibold text-cyan-200">
                             {asset.asset_id.split('-')[0]?.slice(0, 2) ?? '??'}
                           </div>
                           <div className="min-w-0">
@@ -282,7 +282,7 @@ export default function AssetTable() {
                             {asset.criticality}/10
                           </span>
                           <span className={cn(
-                            'rounded-full border px-1.5 py-0.5 text-[0.6rem] font-medium',
+                            'rounded border px-1.5 py-0.5 text-xs font-medium',
                             severityBadge(severity),
                           )}>
                             {severityLabel(severity)}
@@ -295,13 +295,13 @@ export default function AssetTable() {
                             {formatCurrency(assumption?.assumed_impact_inr ?? 0, { currency: true })}
                           </span>
                           {assumption?.is_assumption ? (
-                            <span className="ml-1 inline-flex h-4 items-center rounded-full bg-cyan-500/10 px-1.5 text-[0.55rem] uppercase tracking-wider text-cyan-300">
-                              co
+                            <span className="ml-1 inline-flex h-4 items-center rounded bg-cyan-500/10 px-1.5 text-xs   text-cyan-300">
+                              Assumed
                             </span>
                           ) : null}
                         </div>
                         {assumption && (
-                          <div className="truncate text-[0.6rem] text-slate-600">
+                          <div className="truncate text-xs text-slate-500">
                             {assumption.is_assumption ? 'editable assumption' : 'catalog baseline'}
                           </div>
                         )}
@@ -309,7 +309,7 @@ export default function AssetTable() {
                       <td className="px-5 py-3.5 text-right">
                         <span
                           className={cn(
-                            'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                            'inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium',
                             asset.internet_facing
                               ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
                               : 'bg-slate-800/60 text-slate-500 border border-slate-700/40',
@@ -406,12 +406,12 @@ function AssetDetailCard({
     <div className="mt-5 risk-panel p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-slate-300">Asset detail</h2>
-        <span className="text-[0.65rem] text-slate-500">{asset.asset_id}</span>
+        <span className="text-xs text-slate-500">{asset.asset_id}</span>
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 p-4">
-          <div className="text-[0.65rem] uppercase tracking-widest text-slate-500">
+        <div className="rounded-md border border-slate-700/40 bg-slate-800/40 p-4">
+          <div className="text-xs   text-slate-500">
             Criticality
           </div>
           <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-100">
@@ -426,8 +426,8 @@ function AssetDetailCard({
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 p-4">
-          <div className="text-[0.65rem] uppercase tracking-widest text-slate-500">
+        <div className="rounded-md border border-slate-700/40 bg-slate-800/40 p-4">
+          <div className="text-xs   text-slate-500">
             Data Classification
           </div>
           <div className="mt-1 text-lg font-medium text-slate-200">
@@ -436,8 +436,8 @@ function AssetDetailCard({
           <div className="mt-1 text-xs text-slate-500">per asset record</div>
         </div>
 
-        <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 p-4">
-          <div className="text-[0.65rem] uppercase tracking-widest text-slate-500">
+        <div className="rounded-md border border-slate-700/40 bg-slate-800/40 p-4">
+          <div className="text-xs   text-slate-500">
             Revenue Dependency
           </div>
           <div className="mt-1 text-lg font-medium text-slate-200">
@@ -446,8 +446,8 @@ function AssetDetailCard({
           <div className="mt-1 text-xs text-slate-500">operational impact basis</div>
         </div>
 
-        <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 p-4">
-          <div className="text-[0.65rem] uppercase tracking-widest text-slate-500">
+        <div className="rounded-md border border-slate-700/40 bg-slate-800/40 p-4">
+          <div className="text-xs   text-slate-500">
             Assumed Impact
           </div>
           <div className="mt-1 text-lg font-medium tabular-nums text-cyan-200">
@@ -459,7 +459,7 @@ function AssetDetailCard({
         </div>
       </div>
 
-      <div className="mt-5 rounded-xl border border-slate-700/30 bg-slate-800/40 p-4">
+      <div className="mt-5 rounded-md border border-slate-700/30 bg-slate-800/40 p-4">
         <h3 className="text-sm font-medium text-slate-300">Risk by asset</h3>
         <p className="mt-1 text-xs text-slate-500">
           Criticality across the asset inventory (backend-derived).
@@ -499,16 +499,16 @@ function RiskByAssetBar({
         const pct = Math.max(4, (d.value / max) * 100);
         return (
           <div key={d.id} className="mb-1.5 flex items-end gap-2">
-            <span className="shrink-0 w-28 text-[0.6rem] text-slate-500 truncate">
+            <span className="shrink-0 w-28 text-xs text-slate-500 truncate">
               {d.label}
             </span>
             <div className="flex-1 h-6 overflow-hidden rounded bg-slate-800/60">
               <div
-                className="h-full rounded bg-gradient-to-t from-cyan-500/80 to-blue-500/80 transition-all duration-700"
+                className="h-full rounded    transition-all duration-700"
                 style={{ height: `${pct}%` }}
               />
             </div>
-            <span className="shrink-0 text-[0.6rem] tabular-nums text-slate-400 w-6 text-right">
+            <span className="shrink-0 text-xs tabular-nums text-slate-400 w-6 text-right">
               {d.value}
             </span>
           </div>

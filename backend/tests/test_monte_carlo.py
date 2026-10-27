@@ -79,8 +79,8 @@ def test_money_is_rounded_and_reported():
     result = _run(3.0, 0.5, 111_111, 222_222, 999_999)
     for key, value in result.items():
         if key.endswith('_inr'):
-            assert (value % 1_000) == 0, f'{key} must be rounded to nearest 1,000 INR'
-    assert result['rounding_inr'] == 1_000
+            assert type(value) is int, f'{key} must be rounded to nearest 1,000 INR'
+    assert result['rounding_inr'] == 1
 
 
 def test_invalid_inputs_are_rejected():

@@ -1,124 +1,77 @@
-"""Greedy budget optimizer over the control catalog (coder.md build item 6).
-
-Selection rule: at every step, recompute the marginal expected loss reduction
-of each unselected control against the current combined effectiveness
-(marginal = inherent_loss x (combined_after - combined_before)), rank by
-benefit per rupee, and pick the best still-affordable candidate. Benefits are
-therefore recalculated after every selection, not cached. The algorithm stops
-when nothing affordable yields positive marginal benefit or the budget is
-exhausted, and it can never select a set whose total cost exceeds the budget.
-
-Effectiveness basis: the catalog's eff_likely (documented PERT mode per
-control), labeled as an assumption in every response.
-"""
-
-from dataclasses import dataclass
-from typing import Iterable, List, Optional, Tuple
-
-from app.services import scoring
-
-INR_PER_LAKH = 100_000
-INR_PER_CRORE = 10_000_000
+"""Greedy portfolio optimization using exactly the scenario simulation baseline."""
+from app.services import scenario_engine as engine
 
 
-@dataclass(frozen=True)
-class ControlCandidate:
-    control_key: str
-    control_name: str
-    annual_cost_inr: float
-    effectiveness: float  # 0-1, catalog eff_likely
-
-
-def _ratio(benefit: float, cost: float) -> float:
-    if cost <= 0:
-        return float('inf') if benefit > 0 else 0.0
-    return benefit / cost
-
-
-def optimize_portfolio(
-    candidates: Iterable[ControlCandidate],
-    inherent_loss_inr: float,
-    budget_inr: float,
-) -> dict:
-    """Select controls maximizing expected residual-loss reduction within budget."""
-    pool: List[ControlCandidate] = [
-        c for c in candidates
-        if c.effectiveness > 0.0 and c.annual_cost_inr >= 0.0
-    ]
-    if inherent_loss_inr < 0:
-        raise ValueError('inherent_loss_inr cannot be negative')
-    if budget_inr < 0:
-        raise ValueError('budget_inr cannot be negative')
-
-    combined = 0.0
-    spent = 0.0
-    selected: List[dict] = []
-
+def recommend(db, budget, must_include=(), exclude=(), asset_id=None):
+    if budget < 0:
+        raise ValueError('Budget must be non-negative integer INR')
+    required, excluded = set(must_include), set(exclude)
+    if required & excluded:
+        raise ValueError('A control cannot be both required and excluded')
+    scenarios, controls, raw = engine.context(db, asset_id)
+    catalog = {control.control_key: control for control in controls}
+    if (required | excluded) - catalog.keys():
+        raise ValueError('Unknown control key in must_include or exclude')
+    if sum(catalog[key].annual_cost for key in required) > budget:
+        raise ValueError('Required controls exceed the budget')
+    means = {key: float(samples.mean()) for key, samples in raw.items()}
+    def loss(selected):
+        return sum(means[scenario.id] * (1 - engine.combined_for(scenario, controls, selected)) for scenario in scenarios)
+    inherent = sum(means.values())
+    baseline = loss(set())
+    current = baseline
+    selected = set()
+    recommendations = []
+    spent = 0
+    def pick(key):
+        nonlocal current, spent
+        control = catalog[key]
+        after = loss(selected | {key})
+        benefit = max(0.0, current - after)
+        spent += control.annual_cost
+        selected.add(key)
+        recommendations.append(dict(
+            control_key=key, control_name=control.control_name, annual_cost_inr=control.annual_cost,
+            effectiveness=engine.effective_control(control, prospective=True),
+            marginal_benefit_inr=int(round(current)) - int(round(after)),
+            benefit_per_rupee=benefit / control.annual_cost if control.annual_cost else None,
+            combined_after=1-after/inherent if inherent else 0,
+            cumulative_cost_inr=spent, residual_after_inr=int(round(after)),
+        ))
+        current = after
+    for key in sorted(required):
+        pick(key)
     while True:
-        if spent >= budget_inr:
-            break
-        best: Optional[Tuple[float, float, ControlCandidate, float]] = None
-        selected_keys = {s['control_key'] for s in selected}
-        for candidate in pool:
-            if candidate.control_key in selected_keys:
+        options = []
+        for key, control in catalog.items():
+            if key in selected or key in excluded or spent + control.annual_cost > budget:
                 continue
-            remaining = budget_inr - spent
-            if candidate.annual_cost_inr > remaining:
-                continue  # a selection must never push spend past the budget
-            combined_after = 1.0 - (1.0 - combined) * (1.0 - candidate.effectiveness)
-            if combined_after <= combined:
-                continue  # no positive marginal benefit
-            benefit = inherent_loss_inr * (combined_after - combined)
-            ratio = _ratio(benefit, candidate.annual_cost_inr)
-            if ratio <= 0:
+            benefit = current - loss(selected | {key})
+            if benefit <= 1e-9:
                 continue
-            key = (-ratio, candidate.annual_cost_inr, candidate.control_key)
-            if best is None or key < best[0]:
-                best = (key, ratio, candidate, combined_after)
-        if best is None:
+            ratio = benefit / control.annual_cost if control.annual_cost else float('inf')
+            options.append((-ratio, control.annual_cost, key))
+        if not options:
             break
-        _key, ratio, candidate, combined_after = best
-        benefit = inherent_loss_inr * (combined_after - combined)
-        spent += candidate.annual_cost_inr
-        combined = combined_after
-        selected.append(
-            {
-                'control_key': candidate.control_key,
-                'control_name': candidate.control_name,
-                'annual_cost_inr': _money(candidate.annual_cost_inr),
-                'effectiveness': round(candidate.effectiveness, 4),
-                'marginal_benefit_inr': _money(benefit),
-                'benefit_per_rupee': round(ratio, 4),
-                'combined_after': round(combined, 4),
-                'cumulative_cost_inr': _money(spent),
-                'residual_after_inr': _money(scoring.residual_risk(inherent_loss_inr, combined)),
-            }
-        )
-
-    residual_before = scoring.residual_risk(inherent_loss_inr, 0.0)
-    residual_after = scoring.residual_risk(inherent_loss_inr, combined)
-    return {
-        'budget_inr': _money(budget_inr),
-        'spent_inr': _money(spent),
-        'remaining_budget_inr': _money(max(0.0, budget_inr - spent)),
-        'inherent_loss_inr': _money(inherent_loss_inr),
-        'combined_before': 0.0,
-        'combined_after': round(combined, 4),
-        'residual_before_inr': _money(residual_before),
-        'residual_after_inr': _money(residual_after),
-        'total_expected_reduction_inr': _money(residual_before - residual_after),
-        'recommended_controls': selected,
-        'never_exceeded_budget': spent <= budget_inr + 1e-9,
-        'assumptions': {
-            'effectiveness_basis': 'control catalog eff_likely (PERT mode, documented)',
-            'benefit_model': (
-                'marginal residual reduction vs. combined effectiveness, '
-                'benefits recalculated after each selection'
-            ),
-            'money_rounding_inr': 1_000,
+        pick(min(options)[2])
+    before, after = int(round(baseline)), int(round(current))
+    reduction = before - after
+    return dict(
+        budget_inr=budget, spent_inr=spent, total_cost=spent,
+        remaining_budget_inr=budget-spent, inherent_loss_inr=int(round(inherent)),
+        combined_before=1-baseline/inherent if inherent else 0,
+        combined_after=1-current/inherent if inherent else 0,
+        residual_before_inr=before, residual_after_inr=after,
+        expected_loss_before=before, expected_loss_after=after,
+        total_expected_reduction_inr=reduction,
+        percent_reduction=100*reduction/before if before else 0,
+        roi=(reduction-spent)/spent if spent else None,
+        recommended_controls=recommendations, selected_controls=[row['control_key'] for row in recommendations],
+        never_exceeded_budget=spent <= budget, asset_id=asset_id,
+        assumptions={
+            'baseline': 'current implemented controls at recorded coverage; same scenario draws as summary/simulation',
+            'proposal': 'selected controls are proposed implemented rollouts at 100% coverage; not achieved risk',
+            'effectiveness_basis': 'scenario-applicable eff_likely multiplied by deployed coverage',
+            'zero_cost_roi': 'null when total cost is zero (division undefined)',
         },
-    }
-
-
-def _money(value: float) -> int:
-    return int(round(float(value) / 1_000) * 1_000)
+    )

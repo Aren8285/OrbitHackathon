@@ -25,7 +25,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: 'RiskOps — Cyber Risk Finance',
   description:
-    'Quantified cyber-risk underwriting for FinPay: portfolio loss exposure, asset criticality, vulnerability exposure and control optimization.',
+    'FinPay security operations: assets, vulnerabilities, financial risk and remediation.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <link
           rel="icon"
-          href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230a101e'/><path d='M50 18l24 10v14c0 16-9 28-24 34-15-6-24-18-24-34V28z' fill='none' stroke='%233e8bff' stroke-width='6' stroke-linejoin='round'/><path d='M39 51l8 8 15-16' fill='none' stroke='%2322d3ee' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/></svg>"
+          href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='6' fill='%23111418'/><path d='M50 18l24 10v14c0 16-9 28-24 34-15-6-24-18-24-34V28z' fill='none' stroke='%239cb7ca' stroke-width='6' stroke-linejoin='round'/><path d='M39 51l8 8 15-16' fill='none' stroke='%239cb7ca' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/></svg>"
         />
       </head>
       <body className="m-0 min-h-screen p-0 font-sans antialiased">

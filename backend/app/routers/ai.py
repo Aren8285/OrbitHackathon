@@ -10,48 +10,35 @@ Security model (security.md):
 - The route is rate-limited (simple in-process sliding window).
 """
 
-import threading
-import time
-from collections import deque
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-
 from app import schemas
 from app.database import get_db
-from app.services import copilot
+from app.services import copilot, llm
+from app.security import ai_limit
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(ai_limit)])
+# Kept for tests that explicitly reset the shared limiter.
+_rate_hits = ai_limit.hits
+RATE_MAX_REQUESTS = ai_limit.limit
 
-# security.md: rate-limit AI routes. In-process is fine for the MVP demo.
-RATE_WINDOW_SECONDS = 60.0
-RATE_MAX_REQUESTS = 10
-
-_rate_lock = threading.Lock()
-_rate_hits: deque = deque()
-
-
-def _rate_limited() -> bool:
-    now = time.monotonic()
-    with _rate_lock:
-        while _rate_hits and now - _rate_hits[0] > RATE_WINDOW_SECONDS:
-            _rate_hits.popleft()
-        if len(_rate_hits) >= RATE_MAX_REQUESTS:
-            return True
-        _rate_hits.append(now)
-        return False
-
-
-@router.get('/explain', response_model=schemas.AiExplainResponse)
+@router.get('/explain-risk', response_model=schemas.AiExplainResponse)
 def ai_explain(db: Session = Depends(get_db)):
-    if _rate_limited():
-        raise HTTPException(status_code=429, detail='Too many AI requests, try again shortly')
     metrics = copilot.build_metrics(db)
     return copilot.explain(metrics)
 
 
 @router.get('/metrics', response_model=schemas.CopilotMetrics)
 def ai_metrics(db: Session = Depends(get_db)):
-    """The validated metrics block only - useful for demos and tests without
-    consuming the explain rate budget."""
+    """The validated metrics block only - useful for demos and tests with the same shared AI rate limit."""
     return copilot.validated_metrics(copilot.build_metrics(db))
+
+
+@router.get('/executive-summary', response_model=schemas.AiExplainResponse)
+def executive_summary(db: Session = Depends(get_db)):
+    return copilot.explain(copilot.build_metrics(db), kind='executive-summary')
+
+
+@router.get('/status', response_model=schemas.AiStatus)
+def ai_status():
+    return llm.status()

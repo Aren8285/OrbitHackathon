@@ -1,109 +1,73 @@
-"""Tests for the marginal-benefit greedy budget optimizer (never exceeds budget)."""
-
-import math
-
-from app.services import scoring  # combined/residual formulas exercised again below
-from app.services.optimizer import ControlCandidate, optimize_portfolio
-
-INHERENT = 10_000_000  # 1 crore
+"""Optimizer regressions against the exact shared scenario baseline."""
+import pytest
+from app import models
+from tests.test_calculation_engine import setup_model
 
 
-def _candidate(key, cost, effectiveness, name=None):
-    return ControlCandidate(key, name or key.title(), cost, effectiveness)
+def recommend(client, budget, **kwargs):
+    return client.post('/api/optimizer/recommend', json={'budget': budget, **kwargs})
 
 
-def _keys(result):
-    return [c['control_key'] for c in result['recommended_controls']]
+def test_baseline_cost_reduction_and_roi(client, db):
+    setup_model(db)
+    body = recommend(client, 100).json()
+    assert body['selected_controls'] == ['mfa']
+    assert body['total_cost'] == 100
+    assert body['expected_loss_before'] == client.get('/api/risk/summary').json()['expected_annual_loss_inr'] == 800
+    assert body['expected_loss_after'] == 600
+    assert body['percent_reduction'] == 25
+    assert body['roi'] == 1
+    assert 'proposed' in body['assumptions']['proposal']
+    # Recommendation never changes the actual implementation or stored results.
+    assert client.get('/api/risk/summary').json()['expected_annual_loss_inr'] == 800
+    assert db.query(models.SimulationResult).count() == 0
 
 
-def test_must_pass_combined_controls_check():
-    # required by TASK 3 language: 30/20/25 -> 0.58
-    assert math.isclose(scoring.combined_controls([0.30, 0.20, 0.25]), 0.58, abs_tol=1e-9)
+@pytest.mark.parametrize('budget', [0, 1, 99, 100, 101, 1_000_000])
+def test_never_exceeds_budget(client, db, budget):
+    setup_model(db)
+    body = recommend(client, budget).json()
+    assert body['total_cost'] <= budget
+    assert body['total_cost'] == sum(row['annual_cost_inr'] for row in body['recommended_controls'])
+    assert body['never_exceeded_budget']
 
 
-def test_must_pass_residual_loss_check():
-    # required by TASK 3 language: 2 crore inherent -> 84 lakh residual
-    residual = scoring.residual_risk(2 * 10_000_000, 0.58)
-    assert math.isclose(residual, 8_400_000, abs_tol=1e-3)
+def test_exclusions_respected_without_removing_existing_baseline_controls(client, db):
+    setup_model(db)
+    body = recommend(client, 1000, exclude=['mfa']).json()
+    assert body['selected_controls'] == []
+    assert body['expected_loss_before'] == body['expected_loss_after'] == 800
+    assert body['roi'] is None
 
 
-def test_selects_by_marginal_benefit_per_rupee():
-    expensive = _candidate('big', 2_000_000, 0.60, 'Big Control')   # benefit 6M -> ratio 3.0
-    cheap = _candidate('small', 1_000_000, 0.50, 'Small Control')   # benefit 5M -> ratio 5.0
-    result = optimize_portfolio([expensive, cheap], INHERENT, 5_000_000)
-    assert _keys(result) == ['small', 'big']
-    # after picking 'small' (combined 0.5), big's marginal benefit is recalculated:
-    # 1 - (1-0.5)(1-0.6) = 0.8 -> marginal = 3,000,000 (not the naive 6M)
-    assert math.isclose(result['recommended_controls'][1]['marginal_benefit_inr'], 3_000_000, abs_tol=1_000)
-    assert math.isclose(result['recommended_controls'][0]['marginal_benefit_inr'], 5_000_000, abs_tol=1_000)
-    assert math.isclose(result['combined_after'], 0.8, abs_tol=1e-9)
-    assert result['total_expected_reduction_inr'] > 0
+def test_required_constraints_and_invalid_requests(client, db):
+    setup_model(db)
+    assert recommend(client, 100, must_include=['mfa']).json()['selected_controls'] == ['mfa']
+    for kwargs in [dict(budget=99, must_include=['mfa']), dict(budget=100, must_include=['mfa'], exclude=['mfa']),
+                   dict(budget=100, exclude=['unknown']), dict(budget=-1), dict(budget=100, must_include=['mfa','mfa'])]:
+        assert recommend(client, **kwargs).status_code == 422
 
 
-def test_never_exceeds_budget():
-    control_a = _candidate('a', 1_000_000, 0.50)
-    control_b = _candidate('b', 2_000_000, 0.60)
-    result = optimize_portfolio([control_a, control_b], INHERENT, 1_200_000)
-    assert result['spent_inr'] == 1_000_000
-    assert result['spent_inr'] <= result['budget_inr']
-    assert result['never_exceeded_budget'] is True
-    assert result['remaining_budget_inr'] == 200_000
-    assert _keys(result) == ['a']  # b is unaffordable with what remains
+def test_marginal_benefits_recomputed_after_each_pick(client, db):
+    scenario, _ = setup_model(db)
+    db.add(models.Control(control_key='other', control_name='Other', annual_cost=100,
+                          implementation_status='none', coverage=0, eff_low=0.5, eff_likely=0.6, eff_high=0.7))
+    scenario.applicable_control_keys = ['mfa', 'other']; db.commit()
+    body = recommend(client, 200).json()
+    assert body['selected_controls'] == ['other', 'mfa']
+    assert [row['marginal_benefit_inr'] for row in body['recommended_controls']] == [480, 80]
+    assert body['expected_loss_after'] == 240
 
 
-def test_zero_or_negative_effectiveness_never_selected():
-    dummy = _candidate('dummy', 500_000, 0.0)
-    good = _candidate('good', 500_000, 0.5)
-    result = optimize_portfolio([dummy, good], INHERENT, 2_000_000)
-    assert _keys(result) == ['good']
+def test_free_control_supported_without_nonfinite_json(client, db):
+    _, control = setup_model(db)
+    control.annual_cost = 0; db.commit()
+    body = recommend(client, 0).json()
+    assert body['selected_controls'] == ['mfa']
+    assert body['total_cost'] == 0 and body['roi'] is None
+    assert body['recommended_controls'][0]['benefit_per_rupee'] is None
 
 
-def test_free_control_with_positive_benefit_wins_first():
-    free = _candidate('free', 0, 0.4)
-    paid = _candidate('paid', 1_000_000, 0.9)
-    result = optimize_portfolio([free, paid], INHERENT, 1_000_000)
-    assert _keys(result) == ['free', 'paid']
-    sorted_ratio_desc = [
-        c['benefit_per_rupee'] for c in result['recommended_controls']
-    ]
-    # per-rupee ratios decrease as combined effectiveness saturates
-    assert sorted_ratio_desc[0] >= sorted_ratio_desc[-1]
-
-
-def test_zero_budget_selects_nothing():
-    good = _candidate('good', 1_000_000, 0.9)
-    result = optimize_portfolio([good], INHERENT, 0)
-    assert result['recommended_controls'] == []
-    assert result['residual_after_inr'] == result['residual_before_inr']
-    assert result['never_exceeded_budget'] is True
-
-
-def test_no_candidates_or_zero_inherent_loss():
-    result = optimize_portfolio([], INHERENT, 10_000_000)
-    assert result['recommended_controls'] == []
-    control = _candidate('c', 1_000_000, 0.5)
-    result = optimize_portfolio([control], 0, 10_000_000)
-    assert result['recommended_controls'] == []  # no benefit without inherent loss
-
-
-def test_effectiveness_saturation_avoids_useless_picks():
-    a = _candidate('a', 1_000_000, 1.0)  # alone reaches combined 1.0
-    b = _candidate('b', 1_000_000, 0.8)  # adds nothing after a
-    result = optimize_portfolio([b, a], INHERENT, 10_000_000)
-    assert _keys(result) == ['a']
-    assert math.isclose(result['residual_after_inr'], 0, abs_tol=1_000)
-
-
-def test_negative_inputs_rejected():
-    try:
-        optimize_portfolio([], -5, 1_000)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError('negative inherent loss must raise')
-    try:
-        optimize_portfolio([], 1_000, -1)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError('negative budget must raise')
+def test_repeatable_recommendations(client, db):
+    setup_model(db)
+    assert recommend(client, 100).json() == recommend(client, 100).json()

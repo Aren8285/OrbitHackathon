@@ -180,7 +180,7 @@ class ControlRow(BaseModel):
     eff_low: FloatField = 0.0
     eff_likely: FloatField = 0.0
     eff_high: FloatField = 0.0
-    annual_cost: FloatField = 0.0
+    annual_cost: IntField = 0
 
     @field_validator('control_key')
     @classmethod
@@ -198,7 +198,7 @@ class ControlRow(BaseModel):
 
     @field_validator('annual_cost')
     @classmethod
-    def check_cost(cls, value: float) -> float:
+    def check_cost(cls, value: int) -> int:
         if value < 0:
             raise ValueError('annual_cost cannot be negative')
         return value
@@ -309,7 +309,7 @@ def reject_errors(dataset: str, errors: List[ImportError_]) -> None:
         raise CSVFileRejected(f'{dataset} import rejected: {digits}{more}')
 
 
-def import_assets(db: Session, content: bytes) -> ImportReport:
+def import_assets(db: Session, content: bytes, commit: bool = True) -> ImportReport:
     parsed = parse_csv_bytes(content, 'assets', ASSET_COLUMNS)
     report = ImportReport(dataset='assets', rows_read=len(parsed.rows))
     validated_rows, errors = validate_rows(parsed.rows, AssetRow)
@@ -339,11 +339,11 @@ def import_assets(db: Session, content: bytes) -> ImportReport:
             report.updated += 1
         for column in ASSET_COLUMNS:
             setattr(asset, column, getattr(row, column))
-    db.commit()
+    db.commit() if commit else db.flush()
     return report
 
 
-def import_vulnerabilities(db: Session, content: bytes) -> ImportReport:
+def import_vulnerabilities(db: Session, content: bytes, commit: bool = True) -> ImportReport:
     parsed = parse_csv_bytes(content, 'vulnerabilities', VULNERABILITY_COLUMNS)
     report = ImportReport(dataset='vulnerabilities', rows_read=len(parsed.rows))
     validated_rows, errors = validate_rows(parsed.rows, VulnerabilityRow)
@@ -388,11 +388,11 @@ def import_vulnerabilities(db: Session, content: bytes) -> ImportReport:
             report.updated += 1
         for column in ('title', 'cvss_score', 'epss_score', 'is_kev', 'patch_available', 'patch_age_days', 'status'):
             setattr(vuln, column, getattr(row, column))
-    db.commit()
+    db.commit() if commit else db.flush()
     return report
 
 
-def import_controls(db: Session, content: bytes) -> ImportReport:
+def import_controls(db: Session, content: bytes, commit: bool = True) -> ImportReport:
     parsed = parse_csv_bytes(content, 'controls', CONTROL_COLUMNS)
     report = ImportReport(dataset='controls', rows_read=len(parsed.rows))
     validated_rows, errors = validate_rows(parsed.rows, ControlRow)
@@ -412,5 +412,5 @@ def import_controls(db: Session, content: bytes) -> ImportReport:
             report.updated += 1
         for column in CONTROL_COLUMNS:
             setattr(control, column, getattr(row, column))
-    db.commit()
+    db.commit() if commit else db.flush()
     return report

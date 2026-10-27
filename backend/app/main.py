@@ -1,51 +1,79 @@
-from fastapi import Depends, FastAPI, HTTPException
+from contextlib import asynccontextmanager
+from starlette.concurrency import run_in_threadpool
+from app.services import llm
+
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, select, text
 
 from app import models, schemas
 from app.config import settings
+from app.security import require_demo_token
 from app.database import Base, engine, get_db
 from app.routers import ai, assumptions, assets, controls, imports, optimizer, remediation, risk, simulation, vulnerabilities
 
 Base.metadata.create_all(bind=engine)
+# Bootstrap only the tenant identity at application startup, never on GET paths.
+from app.database import SessionLocal
+with SessionLocal() as bootstrap_db:
+    if bootstrap_db.get(models.Company, models.FINPAY_COMPANY_ID) is None:
+        bootstrap_db.add(models.Company(id=models.FINPAY_COMPANY_ID, name='FinPay Solutions'))
+        bootstrap_db.commit()
+
+@asynccontextmanager
+async def lifespan(app):
+    await run_in_threadpool(llm.discover_models)
+    yield
+
 
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.app_name,
     description='RiskOps API for cyber risk prioritization and remediation planning.',
     version='0.2.0',
+    # Keep API documentation endpoints disabled; only /health is public.
+    docs_url=None, redoc_url=None, openapi_url=None,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    # Dev convenience: the Next.js dev server picks a random port (3000, or an
-    # ephemeral one when 3000 is taken). Allow any loopback origin while
-    # app_env is development; production keeps the exact configured list.
-    allow_origin_regex=(
-        r'^https?://(localhost|127\.0\.0\.1)(:\d+)?$'
-        if settings.app_env == 'development'
-        else None
-    ),
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
 )
 
-app.include_router(imports.router, prefix='/imports', tags=['imports'])
-app.include_router(assets.router, prefix='/assets', tags=['assets'])
-app.include_router(vulnerabilities.router, prefix='/vulnerabilities', tags=['vulnerabilities'])
-app.include_router(controls.router, prefix='/controls', tags=['controls'])
-app.include_router(risk.router, prefix='/risk', tags=['risk'])
-app.include_router(assumptions.router, prefix='/assumptions', tags=['assumptions'])
-app.include_router(optimizer.router, prefix='/optimizer', tags=['optimizer'])
-app.include_router(simulation.router, prefix='/simulation', tags=['simulation'])
-app.include_router(remediation.router, prefix='/remediation', tags=['remediation'])
-app.include_router(ai.router, prefix='/ai', tags=['ai'])
+api = APIRouter(prefix='/api', dependencies=[Depends(require_demo_token)])
+api.include_router(imports.router, tags=['imports'])
+api.include_router(assets.router, prefix='/assets', tags=['assets'])
+api.include_router(vulnerabilities.router, prefix='/vulnerabilities', tags=['vulnerabilities'])
+api.include_router(controls.router, prefix='/controls', tags=['controls'])
+api.include_router(risk.router, prefix='/risk', tags=['risk'])
+api.include_router(assumptions.router, prefix='/assumptions', tags=['assumptions'])
+api.include_router(optimizer.router, prefix='/optimizer', tags=['optimizer'])
+api.include_router(simulation.router, prefix='/simulation', tags=['simulation'])
+api.include_router(remediation.router, prefix='/remediations', tags=['remediation'])
+api.include_router(ai.router, prefix='/ai', tags=['ai'])
 
 
-@app.get('/')
+@api.get('/')
 def read_root():
     return {'message': f'{settings.app_name} API is running'}
+
+
+@api.post('/demo/seed')
+def seed_demo(db=Depends(get_db)):
+    from app.services.demo_rebuild import rebuild_demo
+    try:
+        return rebuild_demo(db)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=503, detail='Demo rebuild failed; previous data has been retained') from None
+
+
+
+app.include_router(api)
 
 
 @app.get('/health', response_model=schemas.HealthStatus)
