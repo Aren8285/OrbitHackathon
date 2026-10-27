@@ -1,11 +1,10 @@
-from collections import defaultdict
-
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
+from app.services import risk_service
 
 router = APIRouter()
 
@@ -14,33 +13,41 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 
-def _control_for_finding(db: Session, finding: models.Vulnerability) -> models.Control | None:
-    """Match the best control to an open vulnerability finding: same cve_id, or else same category,
-    preferring the highest effectiveness."""
-    if finding.cve_id and finding.cve_id.strip() != '':
-        matched = db.scalar(
-            select(models.Control)
-            .where(models.Control.cve_id == finding.cve_id)
-            .order_by(models.Control.eff_likely.desc())
-        )
-        if matched is not None:
-            return matched
+# Category heuristic: the FinPay control catalog and vulnerability CSVs share
+# no common key (controls have no cve_id column; vulnerabilities have no
+# category column), so findings are matched to controls by keyword.
+CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    # Order matters: the first category with a keyword hit wins.
+    ('identity', ('privilege', 'credential', 'password', 'authentication', 'oauth', 'iam role', 'access key', 'mfa')),
+    ('network', ('vpn', 'tls', 'unencrypted', 'firewall', 'segmentation', 'network', 'replication channel')),
+    ('data', ('database', 'bucket', 'storage', 'backup', 'replication', 'data warehouse', 'leak')),
+    ('endpoint', ('endpoint', 'disk', 'malware', 'antivirus', 'host')),
+    ('monitoring', ('logging', 'monitoring', 'detection', 'siem', 'audit')),
+    ('human', ('training', 'phishing', 'awareness', 'social engineering')),
+    ('governance', ('header', 'policy', 'misconfiguration', 'publicly readable', 'sharing link')),
+    ('cloud', ('cloud', 's3', 'internet-facing', 'public web')),
+)
 
-    if finding.category and finding.category.strip() != '':
-        matched = db.scalar(
-            select(models.Control)
-            .where(models.Control.category == finding.category)
-            .order_by(models.Control.eff_likely.desc())
-        )
-        if matched is not None:
-            return matched
 
+def _keyword_category(finding: models.Vulnerability) -> str | None:
+    haystack = f'{finding.title} {finding.cve_id}'.lower()
+    for category, keywords in CATEGORY_KEYWORDS:
+        if any(keyword in haystack for keyword in keywords):
+            return category
     return None
 
 
-def _effective_ordering(finding: models.Vulnerability) -> str:
-    """Sort findings so highest-priority CVEs come first."""
-    return f"{finding.priority:010.6f}_{finding.cve_id}".lower()
+def _control_for_finding(db: Session, finding: models.Vulnerability) -> models.Control | None:
+    """Match the best control to an open vulnerability finding: highest
+    effectiveness within the best-matching available category."""
+    category = _keyword_category(finding)
+    if category is None:
+        return None
+    return db.scalar(
+        select(models.Control)
+        .where(models.Control.category == category)
+        .order_by(models.Control.eff_likely.desc())
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -50,51 +57,58 @@ def _effective_ordering(finding: models.Vulnerability) -> str:
 
 @router.get('/plan', response_model=schemas.RemediationPlan)
 def remediation_plan(db: Session = Depends(get_db)):
-    """Return a prioritized remediation plan: one control per open finding where
-    a suitable control exists, ordered by finding priority."""
-    findings = db.scalars(
-        select(models.Vulnerability)
-        .order_by(models.Vulnerability.priority.desc())
-    ).all()
+    """Return a prioritized remediation plan: one control per open finding
+    where a suitable control exists, ordered by computed finding priority.
+
+    Priority comes from risk_service (the same computed values as
+    /risk/rankings); the Vulnerability model has no priority column.
+    """
+    ranked = [
+        row for row in risk_service.finding_rankings(db, open_only=True)
+    ]
+    ranked.sort(key=lambda row: -row['priority'])
 
     plan: list[schemas.RemediationPlanItem] = []
-    used: set[tuple[str, str]] = set()
+    used_controls: set[str] = set()
 
-    for finding in findings:
-        control = _control_for_finding(db, finding)
-        if control is None:
+    for row in ranked:
+        vulnerability = db.scalar(
+            select(models.Vulnerability)
+            .join(models.Asset)
+            .where(
+                models.Asset.asset_id == row['asset_id'],
+                models.Vulnerability.cve_id == row['cve_id'],
+            )
+        )
+        if vulnerability is None:
             continue
 
-        key = (control.control_id, finding.id)
-        if key in used:
+        control = _control_for_finding(db, vulnerability)
+        if control is None or control.control_key in used_controls:
             continue
-        used.add(key)
+        used_controls.add(control.control_key)
 
         plan.append(
             schemas.RemediationPlanItem(
                 finding=schemas.FindingSummary(
-                    finding_id=finding.id,
-                    cve_id=finding.cve_id,
-                    asset_asset_id=finding.asset.asset_id,
-                    asset_name=finding.asset.asset_name,
-                    asset_criticality=finding.asset.criticality,
-                    asset_category=str(getattr(finding.asset, 'category', '') or ''),
-                    title=finding.title,
-                    cvss=finding.cvss_score,
-                    kev=finding.is_kev,
-                    epss=finding.epss_score,
-                    priority=finding.priority,
+                    finding_id=vulnerability.id,
+                    cve_id=vulnerability.cve_id,
+                    asset_asset_id=vulnerability.asset.asset_id,
+                    asset_name=vulnerability.asset.asset_name,
+                    asset_criticality=vulnerability.asset.criticality,
+                    asset_category=str(getattr(vulnerability.asset, 'asset_type', '') or ''),
+                    title=vulnerability.title,
+                    cvss=vulnerability.cvss_score,
+                    kev=vulnerability.is_kev,
+                    epss=vulnerability.epss_score,
+                    priority=row['priority'],
                 ),
                 control=schemas.ControlSummary(
-                    control_id=control.control_id,
+                    control_id=control.control_key,
                     control_name=control.control_name,
                     category=control.category,
-                    kev_relevant=control.kev_relevant,
-                    tlp=control.tlp,
-                    cost_inr=control.cost_inr,
-                    cost_note=control.cost_note,
+                    cost_inr=control.annual_cost,
                     effectiveness=control.eff_likely,
-                    effectiveness_note=control.eff_note,
                 ),
             )
         )
