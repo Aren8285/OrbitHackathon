@@ -24,7 +24,10 @@ RiskOps is a lightweight risk operations platform for modeling cyber risk, prior
    npm install
    npm run dev
    ```
-4. Optional: run the Docker Compose setup.
+4. Optional: start both services with Docker Compose:
+   ```bash
+   docker compose up --build
+   ```
 
 ## Functional areas
 - Asset inventory and criticality analysis

@@ -1,8 +1,8 @@
 from functools import lru_cache
-from typing import List
+from typing import Annotated, List
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     debug: bool = True
     secret_key: str = 'change-me'
     database_url: str = 'sqlite:///./riskops.db'
-    cors_origins: List[str] = ['http://localhost:3000']
+    cors_origins: Annotated[List[str], NoDecode] = ['http://localhost:3000']
 
     epss_api_url: str = 'https://api.first.org/data/v1/epss'
     kev_api_url: str = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'

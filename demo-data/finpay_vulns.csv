@@ -1,4 +1,187 @@
-cve,asset_name,severity,cvss,epss,kev,status
-CVE-2023-1234,FinPay Core,high,8.8,0.82,true,open
-CVE-2024-5678,Customer Identity,medium,6.5,0.61,true,open
-CVE-2024-0001,Treasury Gateway,high,9.1,0.28,false,triaged
+asset_id,cve_id,title,cvss_score,epss_score,is_kev,patch_available,patch_age_days,status
+A-001,CVE-2099-0001,Remote code execution in database service (SAMPLE),9.8,0.82,true,true,45,open
+A-001,CVE-2099-0002,Privilege escalation in DB engine (SAMPLE),7.8,0.21,false,true,30,open
+A-001,CVE-2099-0003,Default credentials on admin interface (SAMPLE),8.1,0.34,false,true,60,open
+A-003,CVE-2099-0004,Deserialization flaw in web framework (SAMPLE),8.8,0.55,true,true,20,open
+A-004,CVE-2099-0005,API authentication bypass (SAMPLE),9.1,0.47,false,true,14,open
+A-012,CVE-2099-0006,VPN appliance pre-auth flaw (SAMPLE),9.8,0.91,true,true,35,open
+A-011,CVE-2099-0007,Overly permissive OAuth app grants (SAMPLE),6.5,0.07,false,true,18,open
+A-008,CVE-2099-0008,Publicly readable storage bucket (SAMPLE),7.6,0.1,false,true,90,open
+A-008,CVE-2099-0009,Unrotated access keys (SAMPLE),7.0,0.21,false,true,14,accepted
+A-008,CVE-2099-0010,Overly permissive IAM role (SAMPLE),8.4,0.19,false,false,90,open
+A-009,CVE-2099-0011,Public sharing link misconfiguration (SAMPLE),3.2,0.02,false,true,30,open
+A-009,CVE-2099-0012,Legacy authentication enabled (SAMPLE),9.7,0.03,false,true,14,open
+A-009,CVE-2099-0013,Legacy authentication enabled (SAMPLE),5.3,0.22,false,true,7,open
+A-010,CVE-2099-0014,Kernel privilege escalation (SAMPLE),6.7,0.19,false,true,120,open
+A-010,CVE-2099-0015,Weak service account permissions (SAMPLE),4.5,0.06,false,true,7,open
+A-010,CVE-2099-0016,Outdated SSH daemon (SAMPLE),6.3,0.06,false,true,45,open
+A-010,CVE-2099-0017,Outdated SSH daemon (SAMPLE),6.3,0.11,false,true,12,accepted
+A-011,CVE-2099-0018,Legacy authentication enabled (SAMPLE),9.5,0.25,false,true,60,mitigated
+A-012,CVE-2099-0019,VPN appliance pre-auth flaw (SAMPLE),8.1,0.21,false,false,75,open
+A-012,CVE-2099-0020,Outdated firmware with known RCE (SAMPLE),4.2,0.02,false,true,12,open
+A-013,CVE-2099-0021,Unpatched OS cumulative update (SAMPLE),8.7,0.14,false,true,20,open
+A-014,CVE-2099-0022,Privilege escalation in DB engine (SAMPLE),9.7,0.2,false,false,60,open
+A-014,CVE-2099-0023,Remote code execution in database service (SAMPLE),7.2,0.11,false,true,14,false_positive
+A-015,CVE-2099-0024,Server-side request forgery (SAMPLE),8.6,0.14,false,true,7,open
+A-016,CVE-2099-0025,Weak service account permissions (SAMPLE),7.0,0.2,false,true,60,open
+A-017,CVE-2099-0026,Unpatched PDF reader (SAMPLE),5.5,0.06,false,true,12,open
+A-017,CVE-2099-0027,Unpatched PDF reader (SAMPLE),8.3,0.1,false,true,45,open
+A-018,CVE-2099-0028,Kernel privilege escalation (SAMPLE),9.7,0.25,false,true,60,false_positive
+A-018,CVE-2099-0029,Unpatched OS cumulative update (SAMPLE),3.8,0.15,false,true,120,open
+A-019,CVE-2099-0030,Authentication bypass (SAMPLE),8.4,0.13,false,true,75,open
+A-019,CVE-2099-0031,Path traversal (SAMPLE),4.9,0.76,true,true,60,mitigated
+A-019,CVE-2099-0032,Deserialization flaw in web framework (SAMPLE),8.5,0.18,false,true,14,open
+A-020,CVE-2099-0033,Publicly readable storage bucket (SAMPLE),3.5,0.01,false,true,20,open
+A-021,CVE-2099-0034,Unpatched OS cumulative update (SAMPLE),8.5,0.07,false,true,3,open
+A-021,CVE-2099-0035,Outdated SSH daemon (SAMPLE),5.4,0.07,false,false,14,open
+A-021,CVE-2099-0036,Weak service account permissions (SAMPLE),9.4,0.08,false,false,12,false_positive
+A-022,CVE-2099-0037,Authentication bypass (SAMPLE),6.5,0.1,false,true,12,open
+A-022,CVE-2099-0038,Server-side request forgery (SAMPLE),4.1,0.06,false,true,30,accepted
+A-022,CVE-2099-0039,Vulnerable third-party JS library (SAMPLE),7.2,0.46,false,true,120,open
+A-022,CVE-2099-0040,Server-side request forgery (SAMPLE),7.8,0.68,true,true,30,open
+A-023,CVE-2099-0041,Overly permissive IAM role (SAMPLE),5.3,0.05,false,true,20,open
+A-024,CVE-2099-0042,Missing disk encryption policy (SAMPLE),5.7,0.07,false,true,20,mitigated
+A-024,CVE-2099-0043,Unpatched PDF reader (SAMPLE),8.1,0.05,false,true,120,open
+A-024,CVE-2099-0044,Unpatched PDF reader (SAMPLE),9.4,0.22,false,true,30,open
+A-025,CVE-2099-0045,Vulnerable third-party JS library (SAMPLE),9.1,0.05,false,true,30,open
+A-025,CVE-2099-0046,Deserialization flaw in web framework (SAMPLE),4.4,0.02,false,true,20,open
+A-026,CVE-2099-0047,Unpatched OS cumulative update (SAMPLE),4.3,0.01,false,true,45,open
+A-028,CVE-2099-0048,Legacy authentication enabled (SAMPLE),4.9,0.1,false,true,14,accepted
+A-030,CVE-2099-0049,Outdated firmware with known RCE (SAMPLE),4.0,0.21,false,true,3,open
+A-030,CVE-2099-0050,Weak TLS configuration (SAMPLE),7.7,0.09,false,true,45,open
+A-030,CVE-2099-0051,Weak TLS configuration (SAMPLE),6.8,0.21,false,true,120,open
+A-031,CVE-2099-0052,Container runtime escape (SAMPLE),7.8,0.02,false,true,30,open
+A-031,CVE-2099-0053,Overly permissive IAM role (SAMPLE),3.9,0.06,false,true,90,open
+A-032,CVE-2099-0054,Cross-site scripting (stored) (SAMPLE),5.2,0.03,false,true,90,open
+A-034,CVE-2099-0055,Local privilege escalation (SAMPLE),5.2,0.08,false,true,90,open
+A-035,CVE-2099-0056,Path traversal (SAMPLE),4.9,0.01,false,true,60,open
+A-035,CVE-2099-0057,Deserialization flaw in web framework (SAMPLE),7.4,0.15,false,true,20,mitigated
+A-036,CVE-2099-0058,Missing disk encryption policy (SAMPLE),9.0,0.2,false,true,14,open
+A-037,CVE-2099-0059,Weak TLS configuration (SAMPLE),9.0,0.08,false,true,45,open
+A-038,CVE-2099-0060,Outdated SSH daemon (SAMPLE),5.3,0.16,false,true,45,open
+A-038,CVE-2099-0061,Outdated SSH daemon (SAMPLE),4.5,0.04,false,true,30,open
+A-039,CVE-2099-0062,Vulnerable third-party JS library (SAMPLE),8.2,0.27,false,true,120,open
+A-039,CVE-2099-0063,Deserialization flaw in web framework (SAMPLE),9.0,0.1,false,true,14,open
+A-040,CVE-2099-0064,Legacy authentication enabled (SAMPLE),7.9,0.02,false,true,14,false_positive
+A-042,CVE-2099-0065,Outdated SSH daemon (SAMPLE),5.4,0.07,false,true,20,open
+A-043,CVE-2099-0066,Remote code execution in database service (SAMPLE),8.2,0.76,true,true,75,open
+A-045,CVE-2099-0067,VPN appliance pre-auth flaw (SAMPLE),8.3,0.68,true,true,45,open
+A-045,CVE-2099-0068,Outdated firmware with known RCE (SAMPLE),7.1,0.23,false,true,7,open
+A-045,CVE-2099-0069,Weak TLS configuration (SAMPLE),5.1,0.05,false,true,7,false_positive
+A-046,CVE-2099-0070,Excessive data exposure (SAMPLE),9.7,0.1,false,true,120,accepted
+A-047,CVE-2099-0071,Rate limiting missing on auth endpoint (SAMPLE),6.5,0.08,false,true,30,false_positive
+A-049,CVE-2099-0072,Outdated browser component (SAMPLE),9.3,0.9,true,true,90,false_positive
+A-050,CVE-2099-0073,VPN appliance pre-auth flaw (SAMPLE),9.3,0.13,false,true,30,open
+A-051,CVE-2099-0074,Firewall management interface exposed (SAMPLE),9.0,0.18,false,true,30,open
+A-052,CVE-2099-0075,Excessive data exposure (SAMPLE),7.3,0.05,false,true,30,open
+A-052,CVE-2099-0076,API authentication bypass (SAMPLE),4.3,0.1,false,true,120,open
+A-053,CVE-2099-0077,Unrotated access keys (SAMPLE),8.9,0.01,false,false,12,open
+A-053,CVE-2099-0078,Container runtime escape (SAMPLE),3.5,0.27,false,true,12,open
+A-053,CVE-2099-0079,Overly permissive IAM role (SAMPLE),9.3,0.11,false,true,20,mitigated
+A-054,CVE-2099-0080,Local privilege escalation (SAMPLE),9.3,0.15,false,false,14,open
+A-055,CVE-2099-0081,Publicly readable storage bucket (SAMPLE),6.5,0.01,false,true,20,mitigated
+A-055,CVE-2099-0082,Unrotated access keys (SAMPLE),8.2,0.06,false,true,75,open
+A-055,CVE-2099-0083,Overly permissive IAM role (SAMPLE),7.2,0.05,false,true,3,open
+A-056,CVE-2099-0084,SQL injection in management console (SAMPLE),3.6,0.01,false,true,75,open
+A-056,CVE-2099-0085,Remote code execution in database service (SAMPLE),4.0,0.02,false,true,60,open
+A-056,CVE-2099-0086,Unencrypted replication channel (SAMPLE),5.9,0.01,false,true,75,open
+A-058,CVE-2099-0087,Unencrypted replication channel (SAMPLE),5.1,0.9,true,true,45,open
+A-059,CVE-2099-0088,Publicly readable storage bucket (SAMPLE),7.2,0.22,false,true,120,open
+A-060,CVE-2099-0089,Exposed management dashboard (SAMPLE),5.0,0.03,false,false,30,open
+A-060,CVE-2099-0090,Unrotated access keys (SAMPLE),9.3,0.01,false,true,120,open
+A-060,CVE-2099-0091,Container runtime escape (SAMPLE),8.0,0.31,false,true,60,open
+A-028,CVE-2099-0092,MFA not enforced for admins (SAMPLE),7.1,0.03,false,true,75,open
+A-011,CVE-2099-0093,Excessive third-party integrations (SAMPLE),7.6,0.18,false,true,12,open
+A-044,CVE-2099-0094,Stale accounts of ex-employees (SAMPLE),5.8,0.19,false,true,90,open
+A-039,CVE-2099-0095,Session fixation (SAMPLE),4.3,0.05,false,true,90,open
+A-041,CVE-2099-0096,JWT signature not enforced (SAMPLE),5.9,0.11,false,true,120,open
+A-056,CVE-2099-0097,Audit logging disabled (SAMPLE),8.0,0.02,false,true,20,mitigated
+A-026,CVE-2099-0098,Remote desktop exposed internally (SAMPLE),4.5,0.05,false,true,180,open
+A-033,CVE-2099-0099,Remote desktop exposed internally (SAMPLE),5.0,0.09,false,true,180,open
+A-030,CVE-2099-0100,Weak Wi-Fi encryption (SAMPLE),3.7,0.02,false,true,3,open
+A-034,CVE-2099-0101,Outdated office suite (SAMPLE),4.3,0.21,false,true,120,open
+A-033,CVE-2099-0102,Outdated TLS library (SAMPLE),4.7,0.02,false,true,30,open
+A-012,CVE-2099-0103,Unpatched firewall firmware (SAMPLE),3.7,0.06,false,false,60,accepted
+A-038,CVE-2099-0104,Missing security updates (SAMPLE),7.3,0.08,false,false,75,open
+A-017,CVE-2099-0105,Unsupported OS version (SAMPLE),4.3,0.01,false,true,14,false_positive
+A-029,CVE-2099-0106,Insecure CORS policy (SAMPLE),6.2,0.04,false,true,60,open
+A-054,CVE-2099-0107,Unsupported OS version (SAMPLE),6.2,0.04,false,true,30,open
+A-013,CVE-2099-0108,Unnecessary open ports (SAMPLE),8.3,0.12,false,true,45,open
+A-038,CVE-2099-0109,Unnecessary open ports (SAMPLE),5.6,0.14,false,false,3,open
+A-045,CVE-2099-0110,Weak Wi-Fi encryption (SAMPLE),3.7,0.04,false,true,14,open
+A-009,CVE-2099-0111,Stale accounts of ex-employees (SAMPLE),8.4,0.06,false,true,75,open
+A-060,CVE-2099-0112,Logging not enabled (SAMPLE),5.1,0.73,true,true,3,open
+A-019,CVE-2099-0113,Missing security headers (SAMPLE),5.9,0.05,false,true,75,open
+A-023,CVE-2099-0114,Logging not enabled (SAMPLE),9.2,0.17,false,true,180,open
+A-036,CVE-2099-0115,USB storage unrestricted (SAMPLE),4.1,0.16,false,true,60,open
+A-034,CVE-2099-0116,Unsupported OS version (SAMPLE),7.9,0.13,false,true,180,open
+A-017,CVE-2099-0117,Outdated office suite (SAMPLE),6.9,0.12,false,true,14,open
+A-054,CVE-2099-0118,Outdated office suite (SAMPLE),8.6,0.01,false,true,14,open
+A-013,CVE-2099-0119,Missing security updates (SAMPLE),9.5,0.25,false,false,45,open
+A-042,CVE-2099-0120,Remote desktop exposed internally (SAMPLE),3.4,0.16,false,true,20,open
+A-046,CVE-2099-0121,Insecure CORS policy (SAMPLE),9.4,0.14,false,true,7,open
+A-024,CVE-2099-0122,Unsupported OS version (SAMPLE),9.6,0.19,false,true,3,open
+A-010,CVE-2099-0123,Outdated TLS library (SAMPLE),8.4,0.15,false,true,120,accepted
+A-040,CVE-2099-0124,Stale accounts of ex-employees (SAMPLE),6.9,0.2,false,true,7,open
+A-035,CVE-2099-0125,Missing security headers (SAMPLE),8.9,0.14,false,true,12,open
+A-025,CVE-2099-0126,Open redirect (SAMPLE),8.0,0.01,false,true,7,accepted
+A-025,CVE-2099-0127,Session fixation (SAMPLE),4.1,0.02,false,true,20,open
+A-048,CVE-2099-0128,Outdated DB client library (SAMPLE),9.7,0.03,false,true,180,accepted
+A-054,CVE-2099-0129,Local admin rights not restricted (SAMPLE),9.3,0.17,false,true,75,open
+A-013,CVE-2099-0130,Outdated TLS library (SAMPLE),8.8,0.1,false,true,60,open
+A-055,CVE-2099-0131,Security group open to the internet (SAMPLE),3.4,0.04,false,false,60,open
+A-012,CVE-2099-0132,Weak Wi-Fi encryption (SAMPLE),4.2,0.8,true,true,90,open
+A-029,CVE-2099-0133,Mass assignment flaw (SAMPLE),5.8,0.02,false,true,14,accepted
+A-026,CVE-2099-0134,Missing security updates (SAMPLE),4.9,0.01,false,true,20,open
+A-021,CVE-2099-0135,Unnecessary open ports (SAMPLE),7.3,0.05,false,true,7,open
+A-022,CVE-2099-0136,Open redirect (SAMPLE),5.0,0.55,true,true,60,open
+A-027,CVE-2099-0137,Missing security headers (SAMPLE),4.6,0.05,false,false,14,open
+A-055,CVE-2099-0138,Unencrypted snapshot (SAMPLE),7.2,0.01,false,false,45,false_positive
+A-057,CVE-2099-0139,Stale accounts of ex-employees (SAMPLE),4.8,0.85,true,true,75,open
+A-034,CVE-2099-0140,USB storage unrestricted (SAMPLE),3.6,0.06,false,true,20,open
+A-024,CVE-2099-0141,Outdated office suite (SAMPLE),4.0,0.06,false,true,60,open
+A-016,CVE-2099-0142,Unnecessary open ports (SAMPLE),7.5,0.05,false,true,45,open
+A-034,CVE-2099-0143,Local admin rights not restricted (SAMPLE),7.9,0.1,false,true,14,open
+A-025,CVE-2099-0144,Missing security headers (SAMPLE),8.8,0.09,false,true,90,accepted
+A-008,CVE-2099-0145,Security group open to the internet (SAMPLE),9.6,0.6,false,true,75,open
+A-060,CVE-2099-0146,Public container image (SAMPLE),9.2,0.6,true,true,3,open
+A-016,CVE-2099-0147,Missing security updates (SAMPLE),4.8,0.02,false,true,75,open
+A-037,CVE-2099-0148,Legacy protocol enabled (SAMPLE),5.6,0.11,false,true,20,open
+A-009,CVE-2099-0149,MFA not enforced for admins (SAMPLE),5.7,0.09,false,true,120,open
+A-020,CVE-2099-0150,Security group open to the internet (SAMPLE),6.0,0.04,false,true,14,open
+A-014,CVE-2099-0151,Weak password policy on DB accounts (SAMPLE),6.6,0.14,false,true,12,open
+A-036,CVE-2099-0152,Outdated office suite (SAMPLE),7.0,0.04,false,true,120,open
+A-031,CVE-2099-0153,Unencrypted snapshot (SAMPLE),3.5,0.01,false,true,45,open
+A-053,CVE-2099-0154,Public container image (SAMPLE),8.5,0.08,false,true,120,open
+A-010,CVE-2099-0155,Remote desktop exposed internally (SAMPLE),7.2,0.07,false,true,20,open
+A-025,CVE-2099-0156,Outdated CMS plugin (SAMPLE),9.1,0.23,false,false,45,open
+A-035,CVE-2099-0157,Open redirect (SAMPLE),8.4,0.92,true,true,180,open
+A-028,CVE-2099-0158,Stale accounts of ex-employees (SAMPLE),6.2,0.15,false,true,60,open
+A-018,CVE-2099-0159,Remote desktop exposed internally (SAMPLE),7.0,0.12,false,true,90,open
+A-020,CVE-2099-0160,Public container image (SAMPLE),7.7,0.1,false,true,3,open
+A-008,CVE-2099-0161,Public container image (SAMPLE),4.0,0.06,false,true,90,open
+A-012,CVE-2099-0162,Legacy protocol enabled (SAMPLE),3.8,0.31,false,true,30,open
+A-010,CVE-2099-0163,Missing security updates (SAMPLE),7.1,0.01,false,true,45,open
+A-019,CVE-2099-0164,Session fixation (SAMPLE),7.6,0.23,false,true,120,open
+A-049,CVE-2099-0165,Local admin rights not restricted (SAMPLE),7.8,0.37,false,false,45,open
+A-021,CVE-2099-0166,Outdated TLS library (SAMPLE),3.7,0.01,false,true,3,open
+A-049,CVE-2099-0167,USB storage unrestricted (SAMPLE),8.7,0.18,false,false,7,open
+A-039,CVE-2099-0168,Missing security headers (SAMPLE),9.3,0.92,true,true,90,open
+A-047,CVE-2099-0169,JWT signature not enforced (SAMPLE),3.9,0.09,false,false,14,open
+A-043,CVE-2099-0170,Backup file readable by all users (SAMPLE),4.4,0.05,false,true,14,open
+A-032,CVE-2099-0171,Outdated CMS plugin (SAMPLE),4.8,0.8,true,true,14,mitigated
+A-056,CVE-2099-0172,Weak password policy on DB accounts (SAMPLE),6.3,0.01,false,true,120,open
+A-010,CVE-2099-0173,Unnecessary open ports (SAMPLE),9.1,0.16,false,false,12,open
+A-012,CVE-2099-0174,Default SNMP community string (SAMPLE),9.7,0.05,false,true,90,open
+A-021,CVE-2099-0175,Missing security updates (SAMPLE),4.0,0.02,false,true,45,open
+A-058,CVE-2099-0176,Audit logging disabled (SAMPLE),8.5,0.09,false,false,7,open
+A-024,CVE-2099-0177,USB storage unrestricted (SAMPLE),5.4,0.27,false,true,75,open
+A-027,CVE-2099-0178,Session fixation (SAMPLE),6.6,0.06,false,true,60,open
+A-047,CVE-2099-0179,Verbose error messages leak internals (SAMPLE),7.0,0.03,false,true,14,open
+A-018,CVE-2099-0180,Unnecessary open ports (SAMPLE),9.2,0.19,false,true,20,open
+A-060,CVE-2099-0181,Unencrypted snapshot (SAMPLE),5.4,0.13,false,false,7,open
+A-047,CVE-2099-0182,Insecure CORS policy (SAMPLE),7.6,0.09,false,true,20,open
+A-054,CVE-2099-0183,USB storage unrestricted (SAMPLE),3.1,0.09,false,true,7,open
+A-022,CVE-2099-0184,Insecure direct object reference (SAMPLE),9.5,0.01,false,false,20,open
+A-018,CVE-2099-0185,Missing security updates (SAMPLE),6.4,0.04,false,true,45,accepted
+A-038,CVE-2099-0186,Outdated TLS library (SAMPLE),4.8,0.13,false,true,12,open

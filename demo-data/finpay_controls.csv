@@ -1,4 +1,22 @@
-control_name,category,cost,effectiveness,coverage
-Patch Management,technical,75000,0.72,0.8
-Identity Hardening,administrative,42000,0.63,0.7
-Edge Firewall,technical,95000,0.8,0.82
+control_key,control_name,category,coverage,implementation_status,eff_low,eff_likely,eff_high,annual_cost
+mfa,Multi-Factor Authentication,identity,0.3,partial,0.2,0.3,0.35,500000
+pam,Privileged Access Management,identity,0.1,partial,0.1,0.18,0.25,900000
+sso,Single Sign-On with Conditional Access,identity,0.25,partial,0.08,0.14,0.2,400000
+edr,Endpoint Detection & Response,endpoint,0.4,partial,0.15,0.22,0.3,1200000
+patching,Automated Patching,endpoint,0.35,partial,0.15,0.22,0.3,700000
+disk_enc,Full-Disk Encryption,endpoint,0.6,partial,0.05,0.1,0.15,200000
+backups,Immutable Backups,data,0.2,partial,0.2,0.28,0.35,1000000
+dlp,Data Loss Prevention,data,0.0,none,0.1,0.16,0.22,1500000
+db_encryption,Database Encryption & Key Management,data,0.5,partial,0.08,0.14,0.2,600000
+segmentation,Network Segmentation,network,0.0,none,0.15,0.22,0.3,2000000
+waf,Web Application Firewall,network,0.0,none,0.1,0.18,0.25,1000000
+ddos,DDoS Protection Service,network,0.0,none,0.2,0.35,0.5,800000
+ztna,Zero-Trust VPN Replacement,network,0.0,none,0.12,0.2,0.28,1800000
+email_security,Email Security Gateway,identity,0.5,partial,0.15,0.22,0.3,600000
+training,Security Awareness Training,human,0.2,partial,0.08,0.14,0.2,300000
+vuln_mgmt,Vulnerability Management,monitoring,0.3,partial,0.15,0.2,0.25,800000
+siem,SIEM / Log Monitoring,monitoring,0.0,none,0.2,0.28,0.35,3000000
+soc_mdr,Managed Detection & Response (MDR),monitoring,0.0,none,0.2,0.3,0.4,4500000
+cspm,Cloud Security Posture Management,cloud,0.0,none,0.12,0.2,0.28,1200000
+vendor_review,Third-Party Risk Reviews,governance,0.1,partial,0.05,0.1,0.15,500000
+ir_plan,Incident Response Plan & Drills,governance,0.15,partial,0.05,0.12,0.18,350000

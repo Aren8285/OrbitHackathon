@@ -1,4 +1,61 @@
-asset_name,business_unit,criticality,exposure,value,owner,is_cloud
-FinPay Core,Payments,5,0.82,15000000,Infrastructure,true
-Customer Identity,Digital,4,0.71,9000000,Security,false
-Treasury Gateway,Finance,5,0.9,12000000,Engineering,true
+asset_id,asset_name,asset_type,environment,owner,business_unit,criticality,data_classification,internet_facing,revenue_dependency,operational_impact,compliance_impact
+A-001,Payment Processing Database,Database,Production,IT Ops,Payments,10,Restricted,true,10,9,9
+A-002,Customer PII Database,Database,Production,IT Ops,Customer Success,9,Restricted,false,8,8,10
+A-003,Public Web Application,Web App,Production,Engineering,Product,8,Confidential,true,9,8,6
+A-004,Mobile App Backend,API,Production,Engineering,Product,8,Confidential,true,9,8,6
+A-005,Internal HR Portal,Web App,Production,IT Ops,HR,5,Confidential,true,2,4,4
+A-006,Employee Laptops (Fleet),Endpoint,Production,IT Ops,All,4,Internal,false,3,5,3
+A-007,Cloud Storage Bucket - Customer Docs,Cloud,Production,DevOps,Engineering,7,Confidential,true,5,5,8
+A-008,Kubernetes Production Cluster,Cloud,Production,DevOps,Engineering,8,Confidential,false,8,9,5
+A-009,Email System,SaaS,Production,IT Ops,All,6,Confidential,true,4,6,5
+A-010,Backup Server,Server,Production,IT Ops,IT,8,Restricted,false,5,8,7
+A-011,Third-Party Payment Gateway,SaaS,Production,Finance,Payments,9,Restricted,true,10,9,8
+A-012,Admin VPN,Network,Production,IT Ops,IT,7,Internal,true,4,7,5
+A-013,File Server,Server,Production,DevOps,IT,6,Internal,false,4,4,7
+A-014,Analytics DB,Database,Production,DevOps,Sales,6,Confidential,false,5,7,4
+A-015,Merchant Portal (Development),Web App,Development,Engineering,Product,2,Internal,false,2,1,1
+A-016,Monitoring Server,Server,Production,DevOps,IT,4,Confidential,false,4,2,6
+A-017,Finance Team Laptops,Endpoint,Production,IT Ops,Support,5,Confidential,false,4,3,2
+A-018,Print Server,Server,Production,DevOps,IT,4,Confidential,false,4,3,3
+A-019,Admin Console (Development),Web App,Development,Engineering,Product,4,Internal,false,3,3,4
+A-020,Data Lake Storage,Cloud,Production,DevOps,Data,6,Internal,false,5,4,5
+A-021,Build Server,Server,Production,DevOps,IT,8,Confidential,true,7,9,8
+A-022,Support Portal (Development),Web App,Development,Engineering,Product,2,Internal,false,3,3,1
+A-023,Container Registry,Cloud,Production,DevOps,Engineering,4,Internal,false,3,3,6
+A-024,Executive Laptops,Endpoint,Production,IT Ops,Finance,6,Internal,false,4,6,8
+A-025,Partner Portal (Development),Web App,Development,Engineering,Product,2,Internal,false,1,1,4
+A-026,Jump Host (Staging),Server,Staging,DevOps,Engineering,3,Internal,false,3,4,1
+A-027,Marketing Site (Development),Web App,Development,Engineering,Product,2,Internal,false,1,3,1
+A-028,Accounting Software,SaaS,Production,Finance,Support,5,Confidential,true,4,4,7
+A-029,Reporting API,API,Production,Engineering,Product,8,Confidential,true,7,6,7
+A-030,Core Switch,Network,Production,IT Ops,IT,5,Internal,false,4,3,2
+A-031,Dev Kubernetes Cluster,Cloud,Production,DevOps,Data,6,Internal,false,5,7,4
+A-032,Customer Dashboard,Web App,Production,Engineering,Marketing,5,Internal,true,6,6,5
+A-033,Domain Controller,Server,Production,DevOps,IT,7,Internal,false,6,6,5
+A-034,Support Team Laptops,Endpoint,Production,IT Ops,Finance,5,Internal,false,6,3,2
+A-035,Careers Site,Web App,Production,Engineering,Product,8,Confidential,true,9,6,6
+A-036,Engineering Workstations,Endpoint,Production,IT Ops,Finance,6,Confidential,false,5,5,5
+A-037,Office Firewall,Network,Production,IT Ops,IT,7,Internal,false,8,6,4
+A-038,DNS Server,Server,Production,DevOps,Engineering,5,Internal,false,3,3,5
+A-039,Docs Site,Web App,Production,Engineering,Product,6,Confidential,true,6,7,5
+A-040,Code Repository,SaaS,Production,Finance,Sales,7,Internal,false,6,7,5
+A-041,Notification API,API,Production,Engineering,Product,6,Confidential,true,4,6,8
+A-042,Log Collector,Server,Production,DevOps,Engineering,8,Confidential,false,7,8,6
+A-043,CRM Database,Database,Production,DevOps,Finance,8,Confidential,false,6,8,6
+A-044,CI/CD Platform,SaaS,Production,IT Ops,HR,6,Internal,true,4,5,7
+A-045,Branch VPN Gateway,Network,Production,IT Ops,IT,5,Internal,false,5,5,2
+A-046,Webhook Service,API,Production,Engineering,Product,7,Confidential,false,6,6,5
+A-047,KYC Verification API,API,Production,Engineering,Payments,8,Confidential,false,8,7,10
+A-048,Fraud Rules DB,Database,Production,IT Ops,Finance,6,Restricted,false,6,6,4
+A-049,Kiosk Devices,Endpoint,Production,IT Ops,Finance,5,Confidential,true,5,6,7
+A-050,Load Balancer,Network,Production,IT Ops,IT,5,Internal,false,5,5,5
+A-051,Wi-Fi Controller,Network,Production,IT Ops,IT,6,Internal,false,4,5,5
+A-052,Payments API,API,Production,Engineering,Payments,8,Confidential,true,8,9,7
+A-053,Cloud IAM Console,Cloud,Production,DevOps,Data,5,Confidential,false,4,5,5
+A-054,Sales Team Laptops,Endpoint,Production,IT Ops,Support,6,Internal,false,7,5,8
+A-055,Staging Cloud Account,Cloud,Production,DevOps,Engineering,8,Internal,false,8,7,6
+A-056,Audit Log DB,Database,Production,IT Ops,Sales,8,Confidential,false,9,9,10
+A-057,Collaboration Suite,SaaS,Production,IT Ops,Support,4,Internal,true,2,5,2
+A-058,Data Warehouse,Database,Production,DevOps,Engineering,6,Confidential,true,7,5,6
+A-059,Serverless Functions,Cloud,Production,DevOps,Data,8,Internal,false,9,9,7
+A-060,S3 Backups Bucket,Cloud,Production,DevOps,Data,5,Internal,false,5,4,4
