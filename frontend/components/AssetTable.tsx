@@ -1,12 +1,72 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { assets, assumptions, mapApiError, type AssetRuntime } from '@/lib';
-import { cn, formatCurrency, severityLevel, severityBadge, severityDot } from '@/lib/format';
+import { cn, formatCurrency, severityLevel, severityLabel, severityBadge, severityDot } from '@/lib/format';
 
 type State = 'loading' | 'ready' | 'empty' | 'error';
 
+function SkeletonRow() {
+  return (
+    <tr>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg skeleton" />
+          <div className="space-y-1.5">
+            <div className="h-4 w-32 rounded skeleton" />
+            <div className="h-3 w-24 rounded skeleton" />
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <div className="h-6 w-12 rounded skeleton" />
+      </td>
+      <td className="px-4 py-3">
+        <div className="h-6 w-24 rounded skeleton" />
+      </td>
+      <td className="px-4 py-3">
+        <div className="h-6 w-20 rounded skeleton" />
+      </td>
+      <td className="px-4 py-3">
+        <div className="h-6 w-16 rounded skeleton" />
+      </td>
+    </tr>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-500">
+      <svg className="h-10 w-10 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      </svg>
+      <p className="text-sm">No assets loaded yet.</p>
+    </div>
+  );
+}
+
+function ErrorState({ error, onRetry }: { error: string | null; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-400">
+      <svg className="h-10 w-10 text-rose-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+      </svg>
+      <p className="text-sm">Unable to load assets.</p>
+      {error && <p className="text-xs text-slate-600">{error}</p>}
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-2 rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-cyan-200"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
 export default function AssetTable() {
+  const router = useRouter();
   const [state, setState] = useState<State>('loading');
   const [assetsList, setAssetsList] = useState<Array<AssetRuntime>>([]);
   const [assumptionsList, setAssumptionsList] = useState<
@@ -46,9 +106,9 @@ export default function AssetTable() {
     }
   };
 
-  useState(() => {
-    load();
-  });
+  useEffect(() => {
+    void Promise.resolve().then(load);
+  }, []);
 
   const assumptionMap = useMemo(
     () =>
@@ -81,58 +141,6 @@ export default function AssetTable() {
         return acc + (assumption?.assumed_impact_inr ?? 0);
       }, 0),
     [filtered, assumptionMap],
-  );
-
-  const SkeletonRow = () => (
-    <tr>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg skeleton" />
-          <div className="space-y-1.5">
-            <div className="h-4 w-32 rounded skeleton" />
-            <div className="h-3 w-24 rounded skeleton" />
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <div className="h-6 w-12 rounded skeleton" />
-      </td>
-      <td className="px-4 py-3">
-        <div className="h-6 w-24 rounded skeleton" />
-      </td>
-      <td className="px-4 py-3">
-        <div className="h-6 w-20 rounded skeleton" />
-      </td>
-      <td className="px-4 py-3">
-        <div className="h-6 w-16 rounded skeleton" />
-      </td>
-    </tr>
-  );
-
-  const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-500">
-      <svg className="h-10 w-10 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
-      <p className="text-sm">No assets loaded yet.</p>
-    </div>
-  );
-
-  const ErrorState = () => (
-    <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-400">
-      <svg className="h-10 w-10 text-rose-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-      </svg>
-      <p className="text-sm">Unable to load assets.</p>
-      {error && <p className="text-xs text-slate-600">{error}</p>}
-      <button
-        type="button"
-        onClick={load}
-        className="mt-2 rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-cyan-200"
-      >
-        Retry
-      </button>
-    </div>
   );
 
   const selected = filtered[0];
@@ -205,7 +213,7 @@ export default function AssetTable() {
           </div>
         )}
 
-        {state === 'error' && <ErrorState />}
+        {state === 'error' && <ErrorState error={error} onRetry={load} />}
 
         {state === 'empty' && <EmptyState />}
 
@@ -241,7 +249,7 @@ export default function AssetTable() {
                     <tr
                       key={asset.asset_id}
                       className="hover:bg-slate-800/30 cursor-pointer transition-colors"
-                      onClick={() => window.location.href = `/assets/${asset.asset_id}`}
+                      onClick={() => router.push(`/assets/${asset.asset_id}`)}
                     >
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
@@ -361,27 +369,36 @@ function AssetDetailCard({
         is_assumption: boolean;
         basis: string;
         criticality: number;
-      }
-    | undefined;
+      }      | undefined;
 }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<unknown[] | null>(null);
 
-  const loadChart = async () => {
-    try {
-      const data = await assets.list({ limit: 200 });
-      const withRisk = data.map((a) => ({
-        label: a.asset_name,
-        value: a.criticality,
-        id: a.asset_id,
-      }));
-      setChartData(withRisk);
-      setLoaded(true);
-    } catch (err) {
-      setError(mapApiError(err));
-    }
-  };
+  useEffect(() => {
+    let cancelled = false;
+    const loadChart = async () => {
+      try {
+        const data = await assets.list({ limit: 200 });
+        if (!cancelled) {
+          setChartData(
+            data.map((a) => ({
+              label: a.asset_name,
+              value: a.criticality,
+              id: a.asset_id,
+            })),
+          );
+          setLoaded(true);
+        }
+      } catch (err) {
+        if (!cancelled) setError(mapApiError(err));
+      }
+    };
+    void Promise.resolve().then(loadChart);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="mt-5 rounded-2xl border border-slate-700/40 bg-slate-900/50 p-5">

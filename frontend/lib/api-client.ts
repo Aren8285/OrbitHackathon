@@ -10,11 +10,23 @@
  * named function instead, matching the router names in `backend/app/routers/`.
  */
 
+import type {
+  AssetRuntime,
+  AssetCreateRuntime,
+  ControlRuntime,
+  ControlCreateRuntime,
+  ControlCostRuntime,
+  VulnerabilityRuntime,
+  VulnerabilityCreateRuntime,
+  FindingRankingRuntime,
+  AssetRiskRankingRuntime,
+  ImpactAssumptionRuntime,
+  ImpactAssumptionUpdateRuntime,
+  SimulationRequestRuntime,
+  OptimizerRecommendationRequestRuntime,
+} from './api-client-types';
 import {
-  type ApiFetchOptions,
   apiFetch,
-  mapApiError,
-  type ApiErrorPayload,
 } from './api-client-error';
 
 // ---------------------------------------------------------------------------
@@ -35,6 +47,7 @@ export type RiskSummaryRuntime = {
 
 /** Runtime shape for the /simulation/run response. */
 export type SimulationResultRuntime = {
+  distribution: string;
   expected_annual_loss_inr: number;
   p50_inr: number;
   p95_inr: number;
@@ -124,10 +137,13 @@ export type RemediationPlanRuntime = {
 // ---------------------------------------------------------------------------
 
 export const assets = {
-  list: async (params?: { limit?: number }): Promise<Array<AssetRuntime>> => {
+  list: async (
+    params?: number | { limit?: number },
+  ): Promise<Array<AssetRuntime>> => {
+    const limit = typeof params === 'number' ? params : params?.limit;
     const q = new URLSearchParams();
-    if (params?.limit != null) {
-      q.set('limit', String(params.limit));
+    if (limit != null) {
+      q.set('limit', String(limit));
     }
     return apiFetch<Array<AssetRuntime>>(`/assets?${q.toString()}`);
   },
@@ -154,10 +170,6 @@ export const controls = {
     return apiFetch<Array<ControlRuntime>>('/controls');
   },
 
-  get: async (controlKey: string): Promise<ControlRuntime> => {
-    return apiFetch<ControlRuntime>(`/controls/${controlKey}`);
-  },
-
   create: async (payload: ControlCreateRuntime): Promise<ControlRuntime> => {
     return apiFetch<ControlRuntime>('/controls', {
       method: 'POST',
@@ -181,10 +193,6 @@ export const vulnerabilities = {
     return apiFetch<Array<VulnerabilityRuntime>>('/vulnerabilities');
   },
 
-  get: async (cveId: string): Promise<VulnerabilityRuntime> => {
-    return apiFetch<VulnerabilityRuntime>(`/vulnerabilities/${cveId}`);
-  },
-
   create: async (payload: VulnerabilityCreateRuntime): Promise<VulnerabilityRuntime> => {
     return apiFetch<VulnerabilityRuntime>('/vulnerabilities', {
       method: 'POST',
@@ -201,17 +209,33 @@ export const vulnerabilities = {
 export const findings = {
   rankings: {
     list: async (
-      limit?: number,
+      openOnly = true,
     ): Promise<Array<FindingRankingRuntime>> => {
       const q = new URLSearchParams();
-      if (limit != null) {
-        q.set('limit', String(limit));
-      }
+      q.set('open_only', String(openOnly));
       return apiFetch<Array<FindingRankingRuntime>>(
-        `/findings/rankings?${q.toString()}`,
+        `/risk/rankings?${q.toString()}`,
       );
     },
   },
+}
+
+// ---------------------------------------------------------------------------
+// module: health (/health)
+// ---------------------------------------------------------------------------
+
+/** Runtime shape of the server's GET /health response. */
+export interface HealthStatusRuntime {
+  status: string;
+  database: string;
+  assets: number;
+  vulnerabilities: number;
+  controls: number;
+  version: string;
+}
+
+export const health = {
+  get: (): Promise<HealthStatusRuntime> => apiFetch<HealthStatusRuntime>('/health'),
 };
 
 // ---------------------------------------------------------------------------
@@ -224,7 +248,7 @@ export const risk = {
   },
 
   assetRiskRankings: async (): Promise<Array<AssetRiskRankingRuntime>> => {
-    return apiFetch<Array<AssetRiskRankingRuntime>>('/risk/assets_ranked');
+    return apiFetch<Array<AssetRiskRankingRuntime>>('/risk/assets');
   },
 };
 
@@ -248,7 +272,7 @@ export const assumptions = {
     return apiFetch<ImpactAssumptionRuntime>(
       `/assumptions/impact/${assetId}`,
       {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
       },
@@ -274,8 +298,10 @@ export const simulation = {
   assets: {
     get: async (
       assetId: string,
-    ): Promise<AssetSimulationRuntime> => {
-      return apiFetch<AssetSimulationRuntime>(`/simulation/assets/${assetId}`);
+    ): Promise<SimulationResultRuntime> => {
+      // Backend `GET /simulation/assets/{id}` responds with schemas.SimulationResult
+      // at the ROOT of the payload (no asset/simulation wrapper).
+      return apiFetch<SimulationResultRuntime>(`/simulation/assets/${assetId}`);
     },
   },
 };
@@ -289,7 +315,7 @@ export const optimizer = {
     payload: OptimizerRecommendationRequestRuntime,
   ): Promise<OptimizerRecommendationRuntime> => {
     const q = new URLSearchParams();
-    q.set('budget_inr', String(payload.budget_inr));
+    q.set('budget', String(payload.budget_inr));
     if (payload.asset_id) {
       q.set('asset_id', payload.asset_id);
     }

@@ -14,13 +14,9 @@ import { cn } from '@/lib/format';
 export default function LossCurveChart({
   data,
   p10,
-  p25,
-  p50,
-  p75,
   p90,
   p95,
   p99,
-  expected,
   className,
 }: {
   data: Array<{ percent: number; loss_inr: number }>;

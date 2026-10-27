@@ -41,7 +41,18 @@ def load_kev_index(path: Path = KEV_FILE) -> dict:
         return {}
     if not isinstance(data, dict):
         return {}
-    return {cve.upper(): bool(add) for cve, add in data.items()}
+    vulnerabilities = data.get('vulnerabilities')
+    if isinstance(vulnerabilities, list):
+        # Real CISA KEV catalog export: {"vulnerabilities": [{"cveID": ...}, ...]}.
+        result = {}
+        for entry in vulnerabilities:
+            if isinstance(entry, dict):
+                cve = str(entry.get('cveID') or '').strip().upper()
+                if cve:
+                    result[cve] = True
+        return result
+    # Fixture format: flat {"CVE-....": true} mapping.
+    return {cve.upper(): bool(add) for cve, add in data.items() if isinstance(cve, str)}
 
 
 @lru_cache(maxsize=1)
@@ -51,7 +62,11 @@ def load_epss_map(path: Path = EPSS_FILE) -> dict:
     result: dict = {}
     try:
         with path.open(newline='', encoding='utf-8') as handle:
-            for row in csv.DictReader(handle):
+            # Real EPSS exports start with '#' metadata lines before the CSV
+            # header; fixture files may omit them. Strip comments so
+            # DictReader always sees `cve,epss[,percentile]` as the header.
+            rows = (line for line in handle if line.strip() and not line.lstrip().startswith('#'))
+            for row in csv.DictReader(rows):
                 cve = (row.get('cve') or '').strip().upper()
                 score = (row.get('epss') or '').strip()
                 if cve and score:

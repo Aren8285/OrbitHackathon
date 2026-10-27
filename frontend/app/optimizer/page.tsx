@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api, type Recommendation, type OptimizerRecommendationRequest } from '@/lib';
-import { cn, formatCurrency, formatCurrencyCompact } from '@/lib/format';
+import { cn, formatCurrencyCompact } from '@/lib/format';
+import BudgetSlider from '@/components/BudgetSlider';
 
 type OptimizerState = {
   recommendations: Array<Recommendation>;
@@ -152,8 +153,6 @@ export default function BudgetOptimizerPage() {
               step={100_000}
               onChange={(v) => setBudget(v)}
               disabled={state.running}
-              labelLow="₹1L"
-              labelHigh="₹5Cr"
             />
             <div className="mt-2 flex justify-between text-[0.6rem] text-slate-600">
               <span>₹1,00,000</span>
@@ -384,13 +383,10 @@ function AssetSelector({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const inputRef = useState<HTMLInputElement | null>(null)[0];
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setOptions([]);
     const run = async () => {
       try {
         const data = await api.assets.list(200);
@@ -401,7 +397,7 @@ function AssetSelector({
         if (!cancelled) setLoading(false);
       }
     };
-    run();
+    void Promise.resolve().then(run);
     return () => {
       cancelled = true;
     };
@@ -418,9 +414,7 @@ function AssetSelector({
   );
 
   useEffect(() => {
-    if (inputRef && !inputRef.value) {
-      // focus on mount
-    }
+    // input starts filtered-empty; nothing to do on mount
   }, []);
 
   return (
@@ -448,7 +442,7 @@ function AssetSelector({
         <button
           type="button"
           onClick={() => {
-            inputRef?.focus();
+            inputRef.current?.focus();
           }}
           disabled={disabled}
           className={cn(

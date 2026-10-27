@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type SimulationRequest, type SimulationResult, mapApiError } from '@/lib';
 import { cn, formatCurrency } from '@/lib/format';
+import LossCurveChart from '@/components/LossCurveChart';
 
 type ScenarioState = {
   result: SimulationResult | null;
@@ -240,13 +241,13 @@ function DistributionChart({
       // Use percentiles we have; interpolate linearly between neighbours.
       const points: Array<{ p: number; v: number }> = [
         { p: 0, v: 0 },
-        ...(result.p10 != null ? [{ p: 10, v: result.p10_inr }] : []),
-        ...(result.p25 != null ? [{ p: 25, v: result.p25_inr }] : []),
-        ...(result.p50 != null ? [{ p: 50, v: result.p50_inr }] : []),
-        ...(result.p75 != null ? [{ p: 75, v: result.p75_inr }] : []),
-        ...(result.p90 != null ? [{ p: 90, v: result.p90_inr }] : []),
-        ...(result.p95 != null ? [{ p: 95, v: result.p95_inr }] : []),
-        ...(result.p99 != null ? [{ p: 99, v: result.p99_inr }] : []),
+        ...(result.p10_inr != null ? [{ p: 10, v: result.p10_inr }] : []),
+        ...(result.p25_inr != null ? [{ p: 25, v: result.p25_inr }] : []),
+        ...(result.p50_inr != null ? [{ p: 50, v: result.p50_inr }] : []),
+        ...(result.p75_inr != null ? [{ p: 75, v: result.p75_inr }] : []),
+        ...(result.p90_inr != null ? [{ p: 90, v: result.p90_inr }] : []),
+        ...(result.p95_inr != null ? [{ p: 95, v: result.p95_inr }] : []),
+        ...(result.p99_inr != null ? [{ p: 99, v: result.p99_inr }] : []),
         { p: 100, v: result.max_annual_loss_inr },
       ].sort((a, b) => a.p - b.p);
 
@@ -649,27 +650,27 @@ export default function ScenariosPage() {
             <DistributionChart result={state.result} loading={state.running} />
             {state.result && (
               <div className="mt-3 flex flex-wrap gap-2 text-[0.65rem] text-slate-500">
-                {state.result.p10 != null && (
+                {state.result.p10_inr != null && (
                   <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-300">
                     P10 {formatCurrency(state.result.p10_inr, { compact: true, currency: false })}
                   </span>
                 )}
-                {state.result.p50 != null && (
+                {state.result.p50_inr != null && (
                   <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-cyan-300">
                     P50 {formatCurrency(state.result.p50_inr, { compact: true, currency: false })}
                   </span>
                 )}
-                {state.result.p90 != null && (
+                {state.result.p90_inr != null && (
                   <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-300">
                     P90 {formatCurrency(state.result.p90_inr, { compact: true, currency: false })}
                   </span>
                 )}
-                {state.result.p95 != null && (
+                {state.result.p95_inr != null && (
                   <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-rose-300">
                     P95 {formatCurrency(state.result.p95_inr, { compact: true, currency: false })}
                   </span>
                 )}
-                {state.result.p99 != null && (
+                {state.result.p99_inr != null && (
                   <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-violet-300">
                     P99 {formatCurrency(state.result.p99_inr, { compact: true, currency: false })}
                   </span>

@@ -14,14 +14,16 @@ export function useActionPoll(
   { intervalMs = 0, enabled = true }: { intervalMs?: number; enabled?: boolean } = {},
 ) {
   const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  });
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const runRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const run = useCallback(() => {
     if (!enabled) return;
-    onCompleteRef.current().catch(() => {
+    void Promise.resolve().then(onCompleteRef.current).catch(() => {
       /* action-owned retry policy */
     });
   }, [enabled]);
@@ -67,10 +69,12 @@ export function useActionPoll(
  */
 export function useLiveRevalidation(deps: unknown[], onComplete: () => Promise<void> | void) {
   const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  });
 
   useEffect(() => {
-    onCompleteRef.current().catch(() => {
+    void Promise.resolve().then(onCompleteRef.current).catch(() => {
       /* caller owns error handling */
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps

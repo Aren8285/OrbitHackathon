@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   AssetRuntime,
   ImpactAssumptionRuntime,
-  AssetCreateRuntime,
 } from '@/lib';
 import {
   assets,
@@ -323,7 +322,9 @@ export default function AssetsPage() {
   }, []);
 
   useEffect(() => {
-    fetchData();
+    // Defer one microtask so the setState inside fetchData is not called
+    // synchronously during the effect (react-hooks/set-state-in-effect).
+    void Promise.resolve().then(fetchData);
   }, [fetchData]);
 
   const assumptionMap = useMemo(

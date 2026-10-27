@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api, type Control as ControlItem, type Finding } from '@/lib';
-import { cn, formatCurrency, formatCurrencyCompact } from '@/lib/format';
+import { cn, formatCurrencyCompact } from '@/lib/format';
 
 type RemediationState = {
-  plan: Array<{ control: ControlItem; finding: Finding }>;
+  plan: Array<{ control: ControlItem; finding: Finding; covered_cost: number }>;
   selected: Array<string>;
   spending: number;
   loading: boolean;

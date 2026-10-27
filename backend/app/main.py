@@ -18,6 +18,14 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+    # Dev convenience: the Next.js dev server picks a random port (3000, or an
+    # ephemeral one when 3000 is taken). Allow any loopback origin while
+    # app_env is development; production keeps the exact configured list.
+    allow_origin_regex=(
+        r'^https?://(localhost|127\.0\.0\.1)(:\d+)?$'
+        if settings.app_env == 'development'
+        else None
+    ),
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],

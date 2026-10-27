@@ -74,7 +74,7 @@ function formatRupees(n: number): string {
     parts.unshift(s.slice(i - take, i));
     i -= take;
   }
-  return parts.join(',');
+  return sign + parts.join(',');
 }
 
 function formatCompact(n: number, { currency, compactMin }: { currency: boolean; compactMin: 0 | 1 | 2 }): string {
@@ -104,6 +104,13 @@ function formatDecimal(v: number, minDigits: 0 | 1 | 2): string {
     return String(v);
   }
   return fixed;
+}
+
+/**
+ * Merge conditional class names (tiny clsx/tailwind-merge-free helper).
+ */
+export function cn(...classes: Array<string | false | null | undefined>): string {
+  return classes.filter(Boolean).join(' ');
 }
 
 /**

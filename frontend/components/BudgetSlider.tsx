@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useId, useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { cn } from '@/lib/format';
 
 type BudgetSliderProps = {
@@ -58,7 +58,6 @@ export default function BudgetSlider({
   disabled = false,
   ariaLabel,
 }: BudgetSliderProps) {
-  const id = useId();
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -72,7 +71,7 @@ export default function BudgetSlider({
       const rect = trackRef.current.getBoundingClientRect();
       let x = clientX - rect.left;
       x = Math.max(0, Math.min(rect.width, x));
-      let ratio = rect.width > 0 ? x / rect.width : 0;
+      const ratio = rect.width > 0 ? x / rect.width : 0;
       let v = min + ratio * (max - min);
       v = Math.max(min, Math.min(max, v));
       v = Math.round(v / step) * step;

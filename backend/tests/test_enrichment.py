@@ -1,4 +1,11 @@
-"""Tests for local KEV/EPSS enrichment with fictional-CVE separation."""
+"""Tests for local KEV/EPSS enrichment with fictional-CVE separation.
+
+The checked-in data files are REAL exports (CISA KEV catalog JSON and EPSS
+CSV), so default-file assertions use CVEs that actually appear in them.
+Fixture-style formats are covered separately with tmp_path files.
+"""
+
+import json
 
 from app.services import enrichment
 from app.services.enrichment import enrich_finding, get_epss_score, get_kev_status, is_fictional_cve
@@ -13,7 +20,8 @@ def test_fictional_demo_cves_are_flagged():
 
 
 def test_real_cves_use_local_kev_file():
-    flag, source = get_kev_status('CVE-2023-1234', db_value=False)
+    # CVE-2026-109618 is the first entry of the checked-in CISA KEV catalog.
+    flag, source = get_kev_status('CVE-2026-109618', db_value=False)
     assert flag is True
     assert source == enrichment.SOURCE == 'local_files'
 
@@ -32,14 +40,14 @@ def test_fictional_cves_keep_database_values_and_demo_source():
 
 def test_epss_score_from_local_file():
     score, source = get_epss_score('CVE-2024-5678', db_value=None)
-    assert score == 0.61
+    assert score == 0.04991  # value from the real checked-in EPSS export
     assert source == 'local_files'
 
 
 def test_epss_uses_richer_of_local_and_db_for_real_cves():
-    score, _ = get_epss_score('CVE-2023-1234', db_value=0.1)  # local file says 0.82
-    assert score == 0.82
-    score, _ = get_epss_score('CVE-2023-1234', db_value=0.95)  # DB is richer
+    score, _ = get_epss_score('CVE-2024-5678', db_value=0.01)  # local file says 0.04991
+    assert score == 0.04991
+    score, _ = get_epss_score('CVE-2024-5678', db_value=0.95)  # DB is richer
     assert score == 0.95
 
 
@@ -56,11 +64,11 @@ def test_enrich_finding_marks_fictional_provenance():
     assert result['kev'] is True
     assert result['epss'] == 0.82
 
-    result = enrich_finding('CVE-2023-1234', db_kev=None, db_epss=0.1)
+    result = enrich_finding('CVE-2026-109618', db_kev=None, db_epss=0.1)
     assert result['fictional'] is False
     assert result['data_source'] == 'local_sync'
-    assert result['kev'] is True       # from local CISA-style file
-    assert result['epss'] == 0.82      # richer local EPSS value
+    assert result['kev'] is True        # from the checked-in CISA KEV catalog
+    assert result['epss'] == 0.99981    # richer local EPSS value
 
 
 def test_loaders_tolerate_missing_files(tmp_path):
@@ -68,3 +76,35 @@ def test_loaders_tolerate_missing_files(tmp_path):
     empty_epss = enrichment.load_epss_map(tmp_path / 'nope.csv')
     assert empty_kev == {}
     assert empty_epss == {}
+
+
+def test_load_kev_index_parses_real_catalog_format(tmp_path):
+    """The real CISA catalog export ({'vulnerabilities': [...]}) must parse."""
+    catalog = tmp_path / 'kev.json'
+    catalog.write_text(
+        json.dumps({'title': 'CISA KEV', 'vulnerabilities': [{'cveID': 'CVE-2026-109618'}]}),
+        encoding='utf-8',
+    )
+    assert enrichment.load_kev_index(catalog) == {'CVE-2026-109618': True}
+
+
+def test_loaders_accept_fixture_formats(tmp_path):
+    """Legacy fixture formats (flat JSON, comment-free CSV) must still parse."""
+    kev = tmp_path / 'kev.json'
+    kev.write_text('{"CVE-2023-1234": true, "CVE-2024-5678": false}', encoding='utf-8')
+    assert enrichment.load_kev_index(kev) == {'CVE-2023-1234': True, 'CVE-2024-5678': False}
+
+    epss = tmp_path / 'epss.csv'
+    epss.write_text('cve,epss\nCVE-2023-1234,0.82\nCVE-2024-5678,0.61\n', encoding='utf-8')
+    assert enrichment.load_epss_map(epss) == {'CVE-2023-1234': 0.82, 'CVE-2024-5678': 0.61}
+
+
+def test_load_epss_map_skips_metadata_comment_lines(tmp_path):
+    """Real EPSS exports start with '#' metadata lines before the header."""
+    epss = tmp_path / 'epss.csv'
+    epss.write_text(
+        '#model_version:v2026.06.15,score_date:2026-10-26T12:03:22Z\n'
+        'cve,epss,percentile\nCVE-2026-109618,0.99981,0.99981\n',
+        encoding='utf-8',
+    )
+    assert enrichment.load_epss_map(epss) == {'CVE-2026-109618': 0.99981}

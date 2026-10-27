@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { api, type HealthStatus, mapApiError } from '@/lib';
+
 import { cn } from '@/lib/format';
 
 type NavItem = {
@@ -99,79 +99,6 @@ interface NavBarProps {
   className?: string;
 }
 
-function StatusSection() {
-  const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [status, setStatus] = useState<'loading' | 'ok' | 'warn' | 'error'>('loading');
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const data = await api.health.get();
-        if (!cancelled) {
-          setHealth(data);
-          if (data.status === 'ok') {
-            setStatus('ok');
-            setError(null);
-          } else {
-            setStatus('warn');
-            setError(`API reports status=${data.status}`);
-          }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setStatus('error');
-          setError(mapApiError(err));
-        }
-      }
-    };
-    poll();
-    const id = setInterval(poll, 30_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
-
-  const statusColor =
-    status === 'ok'
-      ? 'status-dot ok'
-      : status === 'warn'
-      ? 'status-dot warn'
-      : 'status-dot error';
-
-  const statusLabel =
-    status === 'ok'
-      ? `Connected · ${health?.version ?? '0.0.0'}`
-      : status === 'warn'
-      ? 'Degraded'
-      : 'Offline';
-
-  return (
-    <div className="mt-auto border-t border-slate-700/40 pt-3">
-      <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2 text-slate-400">
-          <span className={statusColor} />
-          <span>{statusLabel}</span>
-        </div>
-        {health && (
-          <div className="flex items-center gap-3 tabular-nums text-slate-500">
-            <span title="Assets">{health.assets} assets</span>
-            <span className="text-slate-600">·</span>
-            <span title="Vulnerabilities">
-              {health.vulnerabilities} vulns
-            </span>
-            <span className="text-slate-600">·</span>
-            <span title="Controls">{health.controls} controls</span>
-          </div>
-        )}
-        {error && <span className="text-rose-300">{error}</span>}
-      </div>
-    </div>
-  );
-}
-
 export default function NavBar({ className }: NavBarProps) {
   const pathname = usePathname();
 
@@ -223,7 +150,7 @@ export default function NavBar({ className }: NavBarProps) {
                 active && 'active text-cyan-300',
               )}
             >
-              <span className={cn(item.icon, 'mr-2.5')} />
+              <span className="mr-2.5 shrink-0">{item.icon}</span>
               {item.label}
               {item.badge !== undefined && item.badge !== '' && (
                 <span
@@ -271,5 +198,3 @@ export default function NavBar({ className }: NavBarProps) {
   );
 }
 
-// Bring setState + useEffect into scope for the component above.
-import { useState, useEffect } from 'react';
