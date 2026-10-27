@@ -534,7 +534,7 @@ export default function ScenariosPage() {
       <div className="grid gap-6 lg:grid-cols-5">
         {/* inputs */}
         <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50 p-5">
+          <div className="risk-panel p-5">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium text-slate-300">Scenario inputs</h2>
               <div className="flex items-center gap-2">
@@ -638,7 +638,7 @@ export default function ScenariosPage() {
           )}
 
           {/* distribution chart */}
-          <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50 p-5">
+          <div className="risk-panel p-5">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium text-slate-300">
                 Annual Loss Distribution
@@ -689,7 +689,7 @@ export default function ScenariosPage() {
           </div>
 
           {/* top risks */}
-          <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50 p-5">
+          <div className="risk-panel p-5">
             <h2 className="text-sm font-medium text-slate-300">
               Top 5 Open Risks (from portfolio)
             </h2>

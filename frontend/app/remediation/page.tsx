@@ -233,7 +233,7 @@ export default function RemediationPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* plan list */}
         <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50">
+          <div className="risk-panel">
             <div className="border-b border-slate-700/40 px-5 py-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium text-slate-300">Remediation Plan</h2>
@@ -332,7 +332,7 @@ export default function RemediationPage() {
         {/* right column */}
         <div className="space-y-5">
           {/* achieved-risk recalculation (verification-aware) */}
-          <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50 p-5">
+          <div className="risk-panel p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-medium text-slate-300">Achieved risk</h2>
               {state.impact && (
@@ -399,7 +399,7 @@ export default function RemediationPage() {
           </div>
 
           {/* cost tracker */}
-          <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50 p-5">
+          <div className="risk-panel p-5">
             <div className="mb-3 flex items-baseline justify-between">
               <h2 className="text-sm font-medium text-slate-300">Cost tracker</h2>
               <span className="text-xs text-slate-500">

@@ -1,24 +1,44 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
+import { Inter, IBM_Plex_Mono } from 'next/font/google';
+import AppShell from '@/components/AppShell';
 import './globals.css';
 
+/*
+ * Typography: one family for the interface (Inter), one for machine
+ * identifiers (IBM Plex Mono). Mono is reserved for CVE / asset codes so it
+ * reads as data, not as decoration.
+ */
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-mono',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
-  title: 'RiskOps — Cyber Risk Dashboard',
+  title: 'RiskOps — Cyber Risk Finance',
   description:
-    'Executive cyber risk dashboard for the RiskOps demo. Portfolio loss exposure, asset risk, vulnerabilities, scenarios and budget optimization.',
+    'Quantified cyber-risk underwriting for FinPay: portfolio loss exposure, asset criticality, vulnerability exposure and control optimization.',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${plexMono.variable}`}>
       <head>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='10' y='10' width='80' height='80' rx='18' fill='%230d1a31' stroke='%231f7dff' stroke-width='4'/><circle cx='50' cy='50' r='14' fill='%2322d3ee'/><path d='M50 38 L60 60 L50 54 L40 60 Z' fill='%230d1a31' stroke='%2322d3ee' stroke-width='3'/></svg>" />
+        <link
+          rel="icon"
+          href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230a101e'/><path d='M50 18l24 10v14c0 16-9 28-24 34-15-6-24-18-24-34V28z' fill='none' stroke='%233e8bff' stroke-width='6' stroke-linejoin='round'/><path d='M39 51l8 8 15-16' fill='none' stroke='%2322d3ee' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/></svg>"
+        />
       </head>
-      <body className="m-0 p-0 min-h-screen bg-risk-bg-primary text-risk-text-primary">
-        {children}
+      <body className="m-0 min-h-screen p-0 font-sans antialiased">
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

@@ -235,7 +235,7 @@ export default function VulnerabilitiesPage() {
       )}
 
       {status === 'empty' && (
-        <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50 px-5 py-10 text-center">
+        <div className="risk-panel px-5 py-10 text-center">
           <p className="text-sm text-slate-400">
             No vulnerabilities recorded yet — import a vulnerabilities CSV from{' '}
             <span className="font-mono text-cyan-300">/assets</span> or below.
@@ -311,7 +311,7 @@ export default function VulnerabilitiesPage() {
           </div>
 
           {/* table */}
-          <div className="overflow-hidden rounded-2xl border border-slate-700/40 bg-slate-900/50">
+          <div className="overflow-hidden risk-panel">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[52rem]">
                 <thead>

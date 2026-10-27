@@ -34,7 +34,7 @@ export default function CopilotPanel() {
   }, []);
 
   return (
-    <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50">
+    <div className="risk-panel">
       <div className="flex items-center justify-between border-b border-slate-700/40 bg-slate-900/70 px-5 py-3">
         <div className="flex items-center gap-2.5">
           <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-cyan-400 to-blue-600 shadow-[0_0_10px_rgba(34,211,238,0.35)]">

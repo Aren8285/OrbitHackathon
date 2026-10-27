@@ -200,17 +200,19 @@ export default function AssetTable() {
       </div>
 
       {/* table */}
-      <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50 overflow-hidden">
+      <div className="risk-panel overflow-hidden">
         <div className="border-b border-slate-700/40 bg-slate-900/70 px-5 py-3">
           <h2 className="text-sm font-medium text-slate-300">Asset Inventory</h2>
         </div>
 
         {state === 'loading' && (
-          <div className="divide-y divide-slate-700/30">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonRow key={i} />
-            ))}
-          </div>
+          <table className="w-full">
+            <tbody className="divide-y divide-slate-700/30">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonRow key={i} />
+              ))}
+            </tbody>
+          </table>
         )}
 
         {state === 'error' && <ErrorState error={error} onRetry={load} />}
@@ -401,7 +403,7 @@ function AssetDetailCard({
   }, []);
 
   return (
-    <div className="mt-5 rounded-2xl border border-slate-700/40 bg-slate-900/50 p-5">
+    <div className="mt-5 risk-panel p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-slate-300">Asset detail</h2>
         <span className="text-[0.65rem] text-slate-500">{asset.asset_id}</span>

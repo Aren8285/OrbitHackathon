@@ -53,26 +53,33 @@ type MetricCardProps = {
   label: string;
   value: string;
   sub?: string;
-  tone?: 'cyan' | 'blue' | 'amber' | 'rose' | 'emerald';
+  /**
+   * Severity semantic, not decoration: the metric itself carries the color
+   * (expected loss is the working number; the P95 tail reads as risk (rose);
+   * inventory counts stay neutral).
+   */
+  tone?: 'working' | 'risk' | 'warn' | 'neutral' | 'good';
   icon?: React.ReactNode;
 };
 
-function MetricCard({ label, value, sub, tone = 'cyan', icon }: MetricCardProps) {
+function MetricCard({ label, value, sub, tone = 'working', icon }: MetricCardProps) {
   const tones: Record<string, string> = {
-    cyan: 'text-cyan-200',
-    blue: 'text-blue-200',
-    amber: 'text-amber-200',
-    rose: 'text-rose-200',
-    emerald: 'text-emerald-200',
+    working: 'text-[color:var(--accent)]',
+    risk: 'text-[color:var(--severity-rose)]',
+    warn: 'text-[color:var(--severity-amber)]',
+    neutral: 'text-[color:var(--ink-primary)]',
+    good: 'text-[color:var(--severity-emerald)]',
   };
   return (
-    <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50 p-5 transition-all hover:border-cyan-500/30 hover:bg-slate-900/70">
-      <div className="flex items-center justify-between">
-        <div className="text-[0.65rem] uppercase tracking-widest text-slate-500">{label}</div>
-        {icon && <div className="text-slate-600">{icon}</div>}
+    <div className="risk-panel risk-rise p-5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs text-[color:var(--ink-muted)]">{label}</div>
+        {icon && <div className="text-[color:var(--ink-faint)]">{icon}</div>}
       </div>
-      <div className={cn('mt-2 text-2xl font-semibold tabular-nums', tones[tone])}>{value}</div>
-      {sub && <div className="mt-1 text-[0.7rem] text-slate-500">{sub}</div>}
+      <div className={cn('mt-2.5 text-2xl font-semibold tabular-nums tracking-tight', tones[tone])}>
+        {value}
+      </div>
+      {sub && <div className="mt-1.5 text-xs text-[color:var(--ink-muted)]">{sub}</div>}
     </div>
   );
 }
@@ -89,9 +96,9 @@ function Panel({
   className?: string;
 }) {
   return (
-    <div className={cn('rounded-2xl border border-slate-700/40 bg-slate-900/50', className)}>
-      <div className="flex items-center justify-between border-b border-slate-700/40 bg-slate-900/70 px-5 py-3">
-        <h2 className="text-sm font-medium text-slate-300">{title}</h2>
+    <div className={cn('risk-panel', className)}>
+      <div className="flex items-center justify-between border-b border-[color:var(--hairline)] px-5 py-3">
+        <h2 className="text-sm font-medium text-[color:var(--ink-secondary)]">{title}</h2>
         {action}
       </div>
       <div className="p-5">{children}</div>
@@ -99,7 +106,16 @@ function Panel({
   );
 }
 
-const KEV_CHART_COLORS = ['#22d3ee', '#3b82f6', '#a78bfa', '#34d399', '#fbbf24', '#fb7185'];
+/* Single-hue intensity ramp for the risk-by-asset bars: rank implies saturation,
+ * never a rainbow palette. */
+function riskBarColor(i: number, n: number): string {
+  const t = n <= 1 ? 0 : i / (n - 1);
+  // azure → desaturated navy: top risks read strongest
+  const r = Math.round(62 - 34 * t);
+  const g = Math.round(139 - 60 * t);
+  const b = Math.round(255 - 90 * t);
+  return `rgb(${r}, ${g}, ${b})`;
+}
 
 export default function ExecutiveDashboard() {
   const [status, setStatus] = useState<Status>('loading');
@@ -241,14 +257,25 @@ export default function ExecutiveDashboard() {
   const sim = data.simulation;
   const optim = data.optimizer;
 
+  /* Chart dressing shared by every Recharts panel on this page — hairline
+   * grid, muted ticks, ledger tooltip. */
+  const chartGrid = '#8b9db729';
+  const chartTick = { fill: 'var(--ink-muted)', fontSize: 12 };
+  const chartTooltip = {
+    background: 'var(--surface-panel)',
+    border: '1px solid var(--hairline-strong)',
+    borderRadius: 8,
+    color: 'var(--ink-primary)',
+  };
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6">
       <div className="mb-6 flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-100">
+          <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--ink-primary)]">
             Executive Dashboard
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
             Loss exposure for {sim.asset_id ?? 'the demo scenario'} — editable
             assumptions, {formatNumber(sim.iterations)} Monte Carlo iterations,
             seed {sim.seed}.
@@ -257,7 +284,7 @@ export default function ExecutiveDashboard() {
         <button
           type="button"
           onClick={refresh}
-          className="rounded-xl border border-slate-700/50 bg-slate-900/60 px-3.5 py-2 text-xs text-slate-400 transition hover:border-cyan-500/30 hover:text-cyan-200"
+          className="risk-inset px-3.5 py-2 text-xs text-[color:var(--ink-secondary)] transition hover:text-[color:var(--ink-primary)]"
         >
           Refresh
         </button>
@@ -272,25 +299,25 @@ export default function ExecutiveDashboard() {
             compact: false,
           })}
           sub={`P50 ${formatCurrencyCompact(sim.p50_inr)}`}
-          tone="cyan"
+          tone="working"
         />
         <MetricCard
           label="P95 annual loss"
           value={formatCurrency(sim.p95_inr, { currency: false, compact: false })}
           sub={`P99 ${formatCurrencyCompact(sim.p99_inr)}`}
-          tone="rose"
+          tone="risk"
         />
         <MetricCard
           label="Critical assets"
           value={data.summary.critical_assets.toLocaleString('en-IN')}
           sub={`${data.summary.total_assets.toLocaleString('en-IN')} assets total`}
-          tone="amber"
+          tone="warn"
         />
         <MetricCard
           label="Open vulnerabilities"
           value={data.summary.open_vulnerabilities.toLocaleString('en-IN')}
           sub={`${data.summary.kev_vulnerabilities.toLocaleString('en-IN')} on CISA KEV`}
-          tone="blue"
+          tone="neutral"
         />
       </div>
 
@@ -312,20 +339,15 @@ export default function ExecutiveDashboard() {
                   <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="#1e293b" strokeDasharray="3 4" />
-              <XAxis dataKey="key" tick={{ fill: '#64748b', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(v: number) => `₹${v}`} />
+              <CartesianGrid stroke={chartGrid} strokeDasharray="3 4" />
+              <XAxis dataKey="key" tick={chartTick} />
+              <YAxis tick={chartTick} tickFormatter={(v: number) => `₹${v}`} />
               <Tooltip
-                contentStyle={{
-                  background: '#0f172a',
-                  border: '1px solid rgba(148,163,184,0.2)',
-                  borderRadius: 12,
-                  color: '#e2e8f0',
-                }}
+                contentStyle={chartTooltip}
                 formatter={(value: number) =>
                   formatCurrency(value * 100000, { currency: false, compact: true })
                 }
-                labelStyle={{ color: '#94a3b8' }}
+                labelStyle={{ color: 'var(--ink-secondary)' }}
               />
               <Area
                 type="monotone"
@@ -345,28 +367,23 @@ export default function ExecutiveDashboard() {
         >
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={topAssets} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-              <CartesianGrid stroke="#1e293b" strokeDasharray="3 4" />
+              <CartesianGrid stroke={chartGrid} strokeDasharray="3 4" />
               <XAxis
                 dataKey="name"
-                tick={{ fill: '#64748b', fontSize: 11 }}
+                tick={{ ...chartTick, fontSize: 11 }}
                 tickFormatter={(label: string) => (String(label).length > 12 ? `${String(label).slice(0, 11)}…` : label)}
                 angle={35}
                 dy={8}
                 height={64}
                 interval={0}
               />
-              <YAxis tick={{ fill: '#64748b', fontSize: 12 }} domain={[0, 1]} />
+              <YAxis tick={chartTick} domain={[0, 1]} />
               <Tooltip
-                contentStyle={{
-                  background: '#0f172a',
-                  border: '1px solid rgba(148,163,184,0.2)',
-                  borderRadius: 12,
-                  color: '#e2e8f0',
-                }}
+                contentStyle={chartTooltip}
               />
-              <Bar dataKey="priority" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="priority" radius={[3, 3, 0, 0]}>
                 {topAssets.map((a, i) => (
-                  <Cell key={a.asset_id} fill={KEV_CHART_COLORS[i % KEV_CHART_COLORS.length]} />
+                  <Cell key={a.asset_id} fill={riskBarColor(i, topAssets.length)} />
                 ))}
               </Bar>
             </BarChart>
@@ -386,20 +403,15 @@ export default function ExecutiveDashboard() {
         >
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={beforeAfter} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-              <CartesianGrid stroke="#1e293b" strokeDasharray="3 4" />
-              <XAxis dataKey="phase" tick={{ fill: '#64748b', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(v: number) => `₹${v}`} />
+              <CartesianGrid stroke={chartGrid} strokeDasharray="3 4" />
+              <XAxis dataKey="phase" tick={chartTick} />
+              <YAxis tick={chartTick} tickFormatter={(v: number) => `₹${v}`} />
               <Tooltip
-                contentStyle={{
-                  background: '#0f172a',
-                  border: '1px solid rgba(148,163,184,0.2)',
-                  borderRadius: 12,
-                  color: '#e2e8f0',
-                }}
+                contentStyle={chartTooltip}
                 formatter={(value: number) =>
                   formatCurrency(value * 100000, { currency: false, compact: true })
                 }
-                labelStyle={{ color: '#94a3b8' }}
+                labelStyle={{ color: 'var(--ink-secondary)' }}
               />
               <Bar dataKey="residual" radius={[4, 4, 0, 0]}>
                 <Cell fill="#fb7185" />

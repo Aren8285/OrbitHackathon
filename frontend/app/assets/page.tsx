@@ -493,7 +493,7 @@ export default function AssetsPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50 overflow-hidden">
+      <div className="risk-panel overflow-hidden">
         <div className="border-b border-slate-700/40 bg-slate-900/70 px-5 py-3 flex items-center justify-between">
           <h2 className="text-sm font-medium text-slate-300">Asset Inventory</h2>
           <AssetImportCard
@@ -506,9 +506,11 @@ export default function AssetsPage() {
         </div>
 
         {status === 'loading' && (
-          <div className="divide-y divide-slate-700/30">
-            <SkeletonRow />
-          </div>
+          <table className="w-full">
+            <tbody className="divide-y divide-slate-700/30">
+              <SkeletonRow />
+            </tbody>
+          </table>
         )}
 
         {status === 'error' && (

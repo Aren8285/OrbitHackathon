@@ -64,17 +64,17 @@ export function formatCurrencyCompact(
 }
 
 function formatRupees(n: number): string {
-  // Indian numbering: groups of 2 after the first 3.
+  // Indian numbering: last 3 digits, then groups of 2 (1,71,90,000).
   const sign = n < 0 ? '-' : '';
   const s = String(Math.abs(n));
-  const parts: string[] = [];
-  let i = s.length;
-  while (i > 0) {
-    const take = i > 3 ? 2 : 3;
-    parts.unshift(s.slice(i - take, i));
-    i -= take;
+  const groups = [s.slice(-3)];
+  let head = s.slice(0, -3);
+  while (head.length > 2) {
+    groups.unshift(head.slice(-2));
+    head = head.slice(0, -2);
   }
-  return sign + parts.join(',');
+  if (head) groups.unshift(head);
+  return sign + groups.join(',');
 }
 
 function formatCompact(n: number, { currency, compactMin }: { currency: boolean; compactMin: 0 | 1 | 2 }): string {

@@ -84,6 +84,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: [
+          'var(--font-sans)',
           'Inter',
           'system-ui',
           '-apple-system',
@@ -94,6 +95,7 @@ const config: Config = {
           'sans-serif',
         ],
         mono: [
+          'var(--font-mono)',
           'JetBrains Mono',
           'ui-monospace',
           'Cascadia Code',

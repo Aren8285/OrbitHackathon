@@ -122,7 +122,7 @@ export default function BudgetOptimizerPage() {
       </div>
 
       {/* controls bar */}
-      <div className="mb-6 rounded-2xl border border-slate-700/40 bg-slate-900/50 p-5">
+      <div className="mb-6 risk-panel p-5">
         <div className="mb-5 flex flex-wrap items-end gap-x-8 gap-y-5">
           {/* asset selector */}
           <div className="w-64">
@@ -243,7 +243,7 @@ export default function BudgetOptimizerPage() {
       )}
 
       {/* table */}
-      <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50 overflow-hidden">
+      <div className="risk-panel overflow-hidden">
         <div className="border-b border-slate-700/40 bg-slate-900/70 px-5 py-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-slate-300">
