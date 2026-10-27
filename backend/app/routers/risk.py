@@ -1,13 +1,26 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+
+from app import schemas
+from app.database import get_db
+from app.services import risk_service
 
 router = APIRouter()
 
 
-@router.get('/summary')
-def get_risk_summary():
-    return {
-        'total_assets': 0,
-        'critical_assets': 0,
-        'open_vulnerabilities': 0,
-        'estimated_loss': 0.0,
-    }
+@router.get('/summary', response_model=schemas.RiskSummary)
+def get_risk_summary(db: Session = Depends(get_db)):
+    return risk_service.summary(db)
+
+
+@router.get('/rankings', response_model=list[schemas.FindingRanking])
+def get_finding_rankings(
+    open_only: bool = Query(True, description='Only open findings when true'),
+    db: Session = Depends(get_db),
+):
+    return risk_service.finding_rankings(db, open_only=open_only)
+
+
+@router.get('/assets', response_model=list[schemas.AssetRiskRanking])
+def get_asset_rankings(db: Session = Depends(get_db)):
+    return risk_service.asset_rankings(db)

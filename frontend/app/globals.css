@@ -1,0 +1,209 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* palette */
+  --risk-navy-950: #050a16;
+  --risk-navy-900: #0a1530;
+  --risk-navy-800: #122142;
+  --risk-navy-700: #1a2c55;
+  --risk-navy-600: #243a68;
+
+  --risk-accent-cyan: #22d3ee;
+  --risk-accent-cyan-dim: #15a8c4;
+  --risk-accent-blue: #3b82f6;
+  --risk-accent-blue-dim: #2563eb;
+
+  --risk-amber: #fbbf24;
+  --risk-rose: #fb7185;
+  --risk-emerald: #34d399;
+  --risk-violet: #a78bfa;
+
+  --risk-muted-foreground: #94a3b8;
+  --risk-muted-background: #0f1a33;
+  --risk-border: rgba(148, 163, 184, 0.12);
+  --risk-border-strong: rgba(148, 163, 184, 0.22);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--risk-navy-900);
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+/* subtle animated gradient wash behind the whole UI */
+.risk-bg-wash {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(34, 211, 238, 0.08), transparent 60%),
+    radial-gradient(900px 500px at 100% 10%, rgba(59, 130, 246, 0.07), transparent 60%),
+    linear-gradient(180deg, rgba(10, 21, 48, 0) 0%, rgba(10, 21, 48, 0.4) 100%);
+  pointer-events: none;
+}
+
+/* card shells */
+.risk-card {
+  background: linear-gradient(180deg, rgba(20, 33, 62, 0.55), rgba(10, 21, 48, 0.55));
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--risk-border);
+  border-radius: 14px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.45);
+}
+
+.risk-card-strong {
+  border-color: var(--risk-border-strong);
+}
+
+/* glowing borders */
+.risk-border-glow-cyan {
+  border-color: rgba(34, 211, 238, 0.25);
+  box-shadow: 0 0 20px -6px rgba(34, 211, 238, 0.25);
+}
+
+/* typography */
+.text-balance {
+  text-wrap: balance;
+}
+
+/* focus ring that respects the theme */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.45), 0 0 0 4px rgba(34, 211, 238, 0.12);
+  border-radius: 8px;
+}
+
+/* subtle input styling */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 0.5;
+}
+
+/* chart container defaults */
+.recharts-wrapper {
+  font-family: inherit;
+}
+
+/* scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.32);
+}
+
+/* loading shimmer skeleton */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.risk-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.04) 0%,
+    rgba(148, 163, 184, 0.10) 50%,
+    rgba(148, 163, 184, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* fade / slide enters */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.35s ease-out both;
+}
+
+.animate-fade-in-delay-1 {
+  animation-delay: 0.05s;
+}
+
+.animate-fade-in-delay-2 {
+  animation-delay: 0.10s;
+}
+
+.animate-fade-in-delay-3 {
+  animation-delay: 0.15s;
+}
+
+.animate-fade-in-delay-4 {
+  animation-delay: 0.20s;
+}
+
+/* stagger children */
+.stagger-children > * {
+  animation: fadeIn 0.35s ease-out both;
+}
+
+.stagger-children > *:nth-child(1) {
+  animation-delay: 0s;
+}
+.stagger-children > *:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.stagger-children > *:nth-child(3) {
+  animation-delay: 0.08s;
+}
+.stagger-children > *:nth-child(4) {
+  animation-delay: 0.12s;
+}
+.stagger-children > *:nth-child(5) {
+  animation-delay: 0.16s;
+}
+.stagger-children > *:nth-child(6) {
+  animation-delay: 0.20s;
+}
+.stagger-children > *:nth-child(7) {
+  animation-delay: 0.24s;
+}
+.stagger-children > *:nth-child(8) {
+  animation-delay: 0.28s;
+}
+.stagger-children > *:nth-child(9) {
+  animation-delay: 0.32s;
+}
+.stagger-children > *:nth-child(10) {
+  animation-delay: 0.36s;
+}

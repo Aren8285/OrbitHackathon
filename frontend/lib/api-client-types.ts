@@ -1,0 +1,270 @@
+/**
+ * Shared TypeScript shapes for the RiskOps API.
+ *
+ * These mirror the backend Pydantic schemas (schemas.py) so the frontend
+ * never gets out of sync with the server contract. When a backend schema
+ * changes, update both this file and the OpenAPI export.
+ */
+
+// ---------------------------------------------------------------------------
+// assets
+// ---------------------------------------------------------------------------
+
+export interface AssetRuntime {
+  asset_id: string;
+  asset_name: string;
+  asset_type: string;
+  environment: string;
+  owner: string | null;
+  business_unit: string | null;
+  criticality: number;
+  data_classification: string;
+  internet_facing: boolean;
+  revenue_dependency: number;
+  operational_impact: number;
+  compliance_impact: number;
+  id: number;
+}
+
+export type AssetCreateRuntime = Omit<AssetRuntime, 'id'>;
+
+// ---------------------------------------------------------------------------
+// controls
+// ---------------------------------------------------------------------------
+
+export interface ControlRuntime {
+  control_key: string;
+  control_name: string;
+  category: string;
+  coverage: number;
+  implementation_status: string;
+  eff_low: number;
+  eff_likely: number;
+  eff_high: number;
+  annual_cost: number;
+  id: number;
+}
+
+export type ControlCreateRuntime = Omit<ControlRuntime, 'id'>;
+
+export interface ControlCostRuntime {
+  control_id: string;
+  control_name: string;
+  category: string | null;
+  cost_inr: number;
+}
+
+// ---------------------------------------------------------------------------
+// vulnerabilities
+// ---------------------------------------------------------------------------
+
+export interface VulnerabilityRuntime {
+  asset_id: string;
+  cve_id: string;
+  title: string;
+  cvss_score: number;
+  epss_score: number;
+  is_kev: boolean;
+  patch_available: boolean;
+  patch_age_days: number;
+  status: string;
+  id: number;
+}
+
+export type VulnerabilityCreateRuntime = Omit<VulnerabilityRuntime, 'id'>;
+
+// ---------------------------------------------------------------------------
+// findings
+// ---------------------------------------------------------------------------
+
+export interface FindingSummaryRuntime {
+  finding_id: string;
+  cve_id: string;
+  asset_asset_id: string;
+  asset_name: string;
+  asset_criticality: number;
+  asset_category: string;
+  title: string;
+  cvss: number;
+  kev: boolean;
+  epss: number;
+  priority: number;
+}
+
+export interface FindingRankingRuntime {
+  asset_id: string;
+  asset_name: string;
+  cve_id: string;
+  title: string;
+  status: string;
+  cvss_score: number;
+  epss_score: number;
+  is_kev: boolean;
+  internet_facing: boolean;
+  patch_age_days: number;
+  criticality: number;
+  exposure: number;
+  technical_risk: number;
+  financial_impact: number;
+  assumed_impact_inr: number;
+  priority: number;
+  fictional: boolean;
+  data_source: string;
+}
+
+// ---------------------------------------------------------------------------
+// risk
+// ---------------------------------------------------------------------------
+
+export interface AssetRiskRankingRuntime {
+  asset_id: string;
+  asset_name: string;
+  criticality: number;
+  internet_facing: boolean;
+  open_findings: number;
+  kev_findings: number;
+  max_technical_risk: number;
+  max_priority: number;
+  assumed_impact_inr: number;
+}
+
+export interface RiskSummaryRuntime {
+  total_assets: number;
+  critical_assets: number;
+  open_vulnerabilities: number;
+  total_vulnerabilities: number;
+  kev_vulnerabilities: number;
+  assumed_exposure_inr: number;
+  financial_note: string;
+}
+
+// ---------------------------------------------------------------------------
+// assumptions
+// ---------------------------------------------------------------------------
+
+export interface ImpactAssumptionRuntime {
+  asset_id: string;
+  asset_name: string;
+  assumed_impact_inr: number;
+  frequency_per_year: number;
+  compromise_probability: number;
+  is_assumption: boolean;
+  basis: string;
+  default_impact_inr: number;
+  criticality: number;
+}
+
+export type ImpactAssumptionUpdateRuntime = {
+  frequency_per_year?: number;
+  compromise_probability?: number;
+  assumed_impact_inr?: number;
+};
+
+// ---------------------------------------------------------------------------
+// simulation
+// ---------------------------------------------------------------------------
+
+export interface SimulationRequestRuntime {
+  frequency_per_year: number;
+  compromise_probability: number;
+  downtime_inr: number;
+  recovery_inr: number;
+  regulatory_inr: number;
+  reputation_inr: number;
+  severity_low_inr: number | null;
+  severity_likely_inr: number | null;
+  severity_high_inr: number | null;
+  iterations: number;
+  seed: number;
+}
+
+export interface SimulationResultRuntime {
+  distribution: string;
+  iterations: number;
+  seed: number;
+  expected_annual_loss_inr: number;
+  p50_inr: number;
+  p95_inr: number;
+  p10_inr: number;
+  p25_inr: number;
+  p75_inr: number;
+  p90_inr: number;
+  p99_inr: number;
+  max_annual_loss_inr: number;
+  mean_event_severity_inr: number;
+  expected_compromised_events: number;
+  zero_loss_share: number;
+  rounding_inr: number;
+  reproducible: boolean;
+  source: string;
+  asset_id: string | null;
+  assumptions: Record<string, unknown>;
+}
+
+export interface AssetSimulationRuntime {
+  asset_id: string;
+  asset_name: string;
+  simulation: SimulationResultRuntime;
+  assumptions: ImpactAssumptionRuntime;
+}
+
+// ---------------------------------------------------------------------------
+// optimizer
+// ---------------------------------------------------------------------------
+
+export interface ControlRecommendationRuntime {
+  control_key: string;
+  control_name: string;
+  annual_cost_inr: number;
+  effectiveness: number;
+  marginal_benefit_inr: number;
+  benefit_per_rupee: number;
+  combined_after: number;
+  cumulative_cost_inr: number;
+  residual_after_inr: number;
+}
+
+export interface OptimizerRecommendationRuntime {
+  budget_inr: number;
+  spent_inr: number;
+  remaining_budget_inr: number;
+  inherent_loss_inr: number;
+  combined_before: number;
+  combined_after: number;
+  residual_before_inr: number;
+  residual_after_inr: number;
+  total_expected_reduction_inr: number;
+  recommended_controls: Array<ControlRecommendationRuntime>;
+  never_exceeded_budget: boolean;
+  asset_id: string;
+  assumptions: Record<string, unknown>;
+}
+
+export type OptimizerRecommendationRequestRuntime = {
+  budget_inr: number;
+  asset_id?: string;
+};
+
+// ---------------------------------------------------------------------------
+// remediation
+// ---------------------------------------------------------------------------
+
+export interface RemediationPlanRuntime {
+  plan: Array<RemediationPlanItemRuntime>;
+  total_cost: number;
+}
+
+export interface RemediationPlanItemRuntime {
+  finding: FindingSummaryRuntime;
+  control: {
+    control_id: string;
+    control_name: string;
+    category: string | null;
+    kev_relevant: boolean;
+    tlp: string | null;
+    cost_inr: number;
+    cost_note: string | null;
+    effectiveness: number;
+    effectiveness_note: string | null;
+  };
+}
