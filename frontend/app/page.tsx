@@ -21,7 +21,8 @@ import {
   type SimulationResultRuntime,
   api,
   mapApiError,
-} from '@/lib';import {
+} from '@/lib';import CopilotPanel from '@/components/CopilotPanel';
+import {
   cn,
   formatCurrency,
   formatCurrencyCompact,
@@ -530,6 +531,8 @@ export default function ExecutiveDashboard() {
           </div>
         )}
       </Panel>
+
+      <CopilotPanel />
     </div>
   );
 }

@@ -33,6 +33,7 @@ export {
   simulation,
   optimizer,
   remediation,
+  ai,
   health,
 } from './api-client';
 export type { HealthStatusRuntime } from './api-client';
@@ -62,9 +63,20 @@ export type {
   OptimizerRecommendationRequestRuntime,
   RemediationPlanRuntime,
   RemediationPlanItemRuntime,
+  RemediationTaskRuntime,
+  RemediationTaskStatus,
+  RemediationTaskUpdatePayload,
+  RemediationImpactRuntime,
+  RemediationLossRangeRuntime,
+  CopilotMetricsRuntime,
+  CopilotTopRiskRuntime,
+  CopilotRecommendationRuntime,
+  AiExplainResponseRuntime,
 } from './api-client-types';
+export type { AiExplanationRuntime } from './api-client';
 
 import {
+  ai as _aiMod,
   assets as _assetsMod,
   assumptions as _assumptionsMod,
   findings as _findingsMod,
@@ -75,6 +87,9 @@ import {
   simulation as _simulationMod,
   vulnerabilities as _vulnsMod,
 } from './api-client';
+import type {
+  RemediationTaskStatus,
+} from './api-client-types';
 import type {
   FindingSummaryRuntime,
   OptimizerRecommendationRequestRuntime,
@@ -180,6 +195,15 @@ export const api: {
   remediation: {
     plan: () => Promise<Array<PlanItem>>;
     costs: () => Promise<Array<Control>>;
+    tasks: () => Promise<Array<import('./api-client-types').RemediationTaskRuntime>>;
+    updateTask: (
+      controlKey: string,
+      status: import('./api-client-types').RemediationTaskStatus,
+    ) => Promise<import('./api-client-types').RemediationTaskRuntime>;
+    impact: () => Promise<import('./api-client-types').RemediationImpactRuntime>;
+  };
+  ai: {
+    explain: () => Promise<import('./api-client-types').AiExplainResponseRuntime>;
   };
 } = {
   health: {
@@ -246,6 +270,12 @@ export const api: {
       }));
     },
     costs: () => _remediationMod.costs(),
+    tasks: () => _remediationMod.tasks(),
+    updateTask: (controlKey, status) => _remediationMod.updateTask(controlKey, status),
+    impact: () => _remediationMod.impact(),
+  },
+  ai: {
+    explain: () => _aiMod.explain(),
   },
 };
 

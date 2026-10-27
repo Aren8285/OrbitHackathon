@@ -254,6 +254,91 @@ export interface RemediationPlanRuntime {
   total_cost: number;
 }
 
+export type RemediationTaskStatus = 'planned' | 'completed' | 'verified';
+
+export interface RemediationTaskRuntime {
+  control_key: string;
+  control_name: string;
+  category: string;
+  status: RemediationTaskStatus;
+  cost_inr: number;
+  effectiveness: number;
+  counts_toward_achieved_risk: boolean;
+  updated_at: string | null;
+}
+
+export interface RemediationTaskUpdatePayload {
+  status: RemediationTaskStatus;
+}
+
+export interface RemediationLossRangeRuntime {
+  expected_annual_loss_inr: number;
+  p50_inr: number;
+  p95_inr: number;
+}
+
+export interface RemediationImpactRuntime {
+  asset_id: string;
+  status_counts: Record<'planned' | 'completed' | 'verified', number>;
+  verified_controls: Array<string>;
+  combined_effectiveness: number;
+  excluded_completed_effectiveness: number;
+  before: RemediationLossRangeRuntime;
+  after: RemediationLossRangeRuntime;
+  expected_reduction_inr: number;
+  assumptions: Record<string, string>;
+}
+
+// ---------------------------------------------------------------------------
+// ai copilot
+// ---------------------------------------------------------------------------
+
+export interface CopilotTopRiskRuntime {
+  rank: number;
+  asset_id: string;
+  cve_id: string;
+  title: string;
+  priority: number;
+  technical_risk: number;
+  criticality: number;
+  fictional: boolean;
+  data_source: string;
+}
+
+export interface CopilotRecommendationRuntime {
+  control_key: string;
+  control_name: string;
+  annual_cost_inr: number;
+  effectiveness: number;
+  marginal_benefit_inr: number;
+}
+
+export interface CopilotMetricsRuntime {
+  total_assets: number;
+  critical_assets: number;
+  open_vulnerabilities: number;
+  kev_vulnerabilities: number;
+  assumed_exposure_inr: number;
+  financial_note: string;
+  scenario_asset_id: string;
+  expected_annual_loss_inr: number;
+  p50_inr: number;
+  p95_inr: number;
+  budget_inr: number;
+  top_risks: Array<CopilotTopRiskRuntime>;
+  recommendations: Array<CopilotRecommendationRuntime>;
+  data_sources_note: string;
+}
+
+export interface AiExplainResponseRuntime {
+  explanation: string;
+  source: 'llm' | 'fallback' | string;
+  model: string | null;
+  fallback_reason: string | null;
+  metrics: CopilotMetricsRuntime;
+  disclaimer: string;
+}
+
 export interface RemediationPlanItemRuntime {
   finding: FindingSummaryRuntime;
   control: {

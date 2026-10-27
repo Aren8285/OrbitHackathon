@@ -133,3 +133,25 @@ class Remediation(Base):
     estimated_cost = Column(Float, default=0.0)
     status = Column(String(50), default='planned')
     summary = Column(Text, nullable=True)
+
+
+class RemediationTask(Base):
+    """Execution status for one control's remediation action.
+
+    Statuses:
+      - ``planned``:   change is planned but not implemented
+      - ``completed``: implemented, not yet verified
+      - ``verified``:  implemented AND verified in production
+
+    Only ``verified`` tasks count toward achieved-risk calculations.
+    Rows are created lazily on the first status update; a control with no
+    row is implicitly ``planned``. New table => created by the startup
+    ``create_all``; no ALTER of existing tables is needed.
+    """
+
+    __tablename__ = 'remediation_tasks'
+
+    id = Column(Integer, primary_key=True, index=True)
+    control_key = Column(String(100), nullable=False, unique=True, index=True)
+    status = Column(String(20), nullable=False, default='planned')
+    updated_at = Column(DateTime, nullable=True)

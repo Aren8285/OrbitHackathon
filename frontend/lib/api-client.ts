@@ -24,6 +24,10 @@ import type {
   ImpactAssumptionUpdateRuntime,
   SimulationRequestRuntime,
   OptimizerRecommendationRequestRuntime,
+  AiExplainResponseRuntime,
+  RemediationImpactRuntime,
+  RemediationTaskRuntime,
+  RemediationTaskStatus,
 } from './api-client-types';
 import {
   apiFetch,
@@ -326,7 +330,21 @@ export const optimizer = {
 };
 
 // ---------------------------------------------------------------------------
-// module: remediation
+// module: ai copilot (building item 8)
+// ---------------------------------------------------------------------------
+
+export type AiExplanationRuntime = AiExplainResponseRuntime;
+
+/** AI Copilot: client only ever reads the served text; no API key, no
+ * user-supplied body, numbers always come from the server engines. */
+export const ai = {
+  explain: async (): Promise<AiExplainResponseRuntime> => {
+    return apiFetch<AiExplainResponseRuntime>('/ai/explain');
+  },
+};
+
+// ---------------------------------------------------------------------------
+// module: remediation (plan + persisted task status + impact)
 // ---------------------------------------------------------------------------
 
 export const remediation = {
@@ -336,6 +354,28 @@ export const remediation = {
 
   costs: async (): Promise<Array<ControlCostRuntime>> => {
     return apiFetch<Array<ControlCostRuntime>>('/remediation/costs');
+  },
+
+  tasks: async (): Promise<Array<RemediationTaskRuntime>> => {
+    return apiFetch<Array<RemediationTaskRuntime>>('/remediation/tasks');
+  },
+
+  updateTask: async (
+    controlKey: string,
+    status: RemediationTaskStatus,
+  ): Promise<RemediationTaskRuntime> => {
+    return apiFetch<RemediationTaskRuntime>(
+      `/remediation/tasks/${controlKey}`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status }),
+      },
+    );
+  },
+
+  impact: async (): Promise<RemediationImpactRuntime> => {
+    return apiFetch<RemediationImpactRuntime>('/remediation/impact');
   },
 };
 

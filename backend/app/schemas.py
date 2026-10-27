@@ -1,6 +1,6 @@
 import re
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -228,6 +228,117 @@ class ControlCost(StrictModel):
     control_name: str
     category: str
     cost_inr: float
+
+
+# ---------------------------------------------------------------- Remediation tasks (persisted status)
+
+
+TASK_STATUSES = ('planned', 'completed', 'verified')
+
+
+class RemediationTaskUpdate(StrictModel):
+    """Status change for one control's remediation task.
+
+    extra='forbid': a misspelled field (e.g. `sttaus`) on a state-changing
+    request must be rejected, not silently ignored.
+    """
+
+    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True, extra='forbid')
+
+    status: str = Field(..., description='planned | completed | verified')
+
+    @field_validator('status')
+    @classmethod
+    def check_status(cls, value: str) -> str:
+        if value not in TASK_STATUSES:
+            raise ValueError(f'status must be one of {list(TASK_STATUSES)}')
+        return value
+
+
+class RemediationTaskOut(StrictModel):
+    control_key: str
+    control_name: str
+    category: str
+    status: str
+    cost_inr: float = Field(..., ge=0)
+    effectiveness: float = Field(..., ge=0, le=1)
+    counts_toward_achieved_risk: bool
+    updated_at: Optional[str] = None
+
+
+class LossRange(StrictModel):
+    """Loss is always shown as a range (P50 / P95), never one number."""
+
+    expected_annual_loss_inr: int = Field(..., ge=0)
+    p50_inr: int = Field(..., ge=0)
+    p95_inr: int = Field(..., ge=0)
+
+
+class RemediationImpact(StrictModel):
+    """Before/after achieved-risk recalculation: only verified, implemented
+    controls reduce residual loss."""
+
+    asset_id: str
+    status_counts: Dict[str, int]
+    verified_controls: List[str]
+    combined_effectiveness: float = Field(..., ge=0, le=1)
+    excluded_completed_effectiveness: float = Field(..., ge=0, le=1)
+    before: LossRange
+    after: LossRange
+    expected_reduction_inr: int = Field(..., ge=0)
+    assumptions: Dict[str, str]
+
+
+# ---------------------------------------------------------------- AI copilot (server-side LLM only)
+
+
+class CopilotTopRisk(StrictModel):
+    rank: int = Field(..., ge=1, le=100)
+    asset_id: str
+    cve_id: str
+    title: str
+    priority: float = Field(..., ge=0, le=1)
+    technical_risk: float = Field(..., ge=0, le=1)
+    criticality: float = Field(..., ge=0, le=1)
+    fictional: bool
+    data_source: str
+
+
+class CopilotRecommendation(StrictModel):
+    control_key: str
+    control_name: str
+    annual_cost_inr: int = Field(..., ge=0)
+    effectiveness: float = Field(..., ge=0, le=1)
+    marginal_benefit_inr: int = Field(..., ge=0)
+
+
+class CopilotMetrics(StrictModel):
+    """Server-computed, validated risk metrics. This is the ONLY data the
+    LLM (or the deterministic fallback) ever sees or narrates."""
+
+    total_assets: int = Field(..., ge=0)
+    critical_assets: int = Field(..., ge=0)
+    open_vulnerabilities: int = Field(..., ge=0)
+    kev_vulnerabilities: int = Field(..., ge=0)
+    assumed_exposure_inr: int = Field(..., ge=0)
+    financial_note: str
+    scenario_asset_id: str
+    expected_annual_loss_inr: int = Field(..., ge=0)
+    p50_inr: int = Field(..., ge=0)
+    p95_inr: int = Field(..., ge=0)
+    budget_inr: int = Field(..., ge=0)
+    top_risks: List[CopilotTopRisk]
+    recommendations: List[CopilotRecommendation]
+    data_sources_note: str
+
+
+class AiExplainResponse(StrictModel):
+    explanation: str = Field(..., min_length=1)
+    source: str = Field(..., description="'llm' when the provider answered, 'fallback' otherwise")
+    model: Optional[str] = None
+    fallback_reason: Optional[str] = None
+    metrics: CopilotMetrics
+    disclaimer: str
 
 
 # ---------------------------------------------------------------- Impact assumptions (editable, labeled)
