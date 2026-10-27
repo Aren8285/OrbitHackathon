@@ -12,3 +12,7 @@ node_modules/
 .next/
 out/
 coverage/
+server.log
+backend/server.log
+*.log
+*.tsbuildinfo
