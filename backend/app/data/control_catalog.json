@@ -1,0 +1,18 @@
+{
+  "controls": [
+    {
+      "name": "Patch management",
+      "category": "technical",
+      "cost": 50000,
+      "effectiveness": 0.68,
+      "coverage": 0.8
+    },
+    {
+      "name": "Identity hardening",
+      "category": "administrative",
+      "cost": 35000,
+      "effectiveness": 0.56,
+      "coverage": 0.7
+    }
+  ]
+}

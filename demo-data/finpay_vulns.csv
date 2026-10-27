@@ -1,0 +1,4 @@
+cve,asset_name,severity,cvss,epss,kev,status
+CVE-2023-1234,FinPay Core,high,8.8,0.82,true,open
+CVE-2024-5678,Customer Identity,medium,6.5,0.61,true,open
+CVE-2024-0001,Treasury Gateway,high,9.1,0.28,false,triaged

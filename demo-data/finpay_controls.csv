@@ -1,0 +1,4 @@
+control_name,category,cost,effectiveness,coverage
+Patch Management,technical,75000,0.72,0.8
+Identity Hardening,administrative,42000,0.63,0.7
+Edge Firewall,technical,95000,0.8,0.82

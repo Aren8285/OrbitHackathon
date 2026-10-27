@@ -1,0 +1,4 @@
+asset_name,business_unit,criticality,exposure,value,owner,is_cloud
+FinPay Core,Payments,5,0.82,15000000,Infrastructure,true
+Customer Identity,Digital,4,0.71,9000000,Security,false
+Treasury Gateway,Finance,5,0.9,12000000,Engineering,true
