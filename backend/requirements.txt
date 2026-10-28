@@ -3,7 +3,6 @@ uvicorn[standard]
 sqlalchemy
 pydantic
 pydantic-settings
-pandas
 numpy
 python-multipart
 python-dotenv

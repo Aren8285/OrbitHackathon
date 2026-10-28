@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type SimulationRequest, type SimulationResult, mapApiError } from '@/lib';
 import { cn, formatCurrency } from '@/lib/format';
 import LossCurveChart from '@/components/LossCurveChart';
+import { ACCENT, INK_MUTED, INK_SECONDARY, SEVERITY_ROSE } from '@/lib/chart-colors';
 
 type ScenarioState = {
   result: SimulationResult | null;
@@ -37,7 +38,7 @@ function SeverityInput({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-sm">
         <label className="text-slate-400">{label}</label>
-        {hint && <span className="text-[0.65rem] text-slate-600">{hint}</span>}
+        {hint && <span className="text-xs text-slate-500">{hint}</span>}
       </div>
       <div className="relative">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
@@ -45,6 +46,7 @@ function SeverityInput({
         </span>
         <input
           type="number"
+          aria-label={label}
           min={min}
           max={max}
           value={value}
@@ -55,11 +57,12 @@ function SeverityInput({
           }}
           disabled={disabled}
           className={cn(
-            'h-9 w-full rounded-lg border border-slate-700/60 bg-slate-800/70 pl-7 pr-3 text-sm text-slate-100 tabular-nums focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/40',
+            'h-9 w-full rounded-md border border-slate-700/60 bg-slate-800/70 pl-7 pr-3 text-sm text-slate-100 tabular-nums focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/40',
             disabled && 'opacity-50 cursor-not-allowed',
           )}
         />
       </div>
+      <p className="text-xs text-slate-400">{formatCurrency(value)}</p>
     </div>
   );
 }
@@ -148,7 +151,7 @@ function SimulationControls({
             }}
             disabled={disabled}
             className={cn(
-              'h-9 w-full rounded-lg border border-slate-700/60 bg-slate-800/70 text-sm text-slate-100 tabular-nums focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/40',
+              'h-9 w-full rounded-md border border-slate-700/60 bg-slate-800/70 text-sm text-slate-100 tabular-nums focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/40',
               disabled && 'opacity-50 cursor-not-allowed',
             )}
           />
@@ -171,7 +174,7 @@ function SimulationControls({
             }}
             disabled={disabled}
             className={cn(
-              'h-9 w-full rounded-lg border border-slate-700/60 bg-slate-800/70 text-sm text-slate-100 tabular-nums focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/40',
+              'h-9 w-full rounded-md border border-slate-700/60 bg-slate-800/70 text-sm text-slate-100 tabular-nums focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/40',
               disabled && 'opacity-50 cursor-not-allowed',
             )}
           />
@@ -196,7 +199,7 @@ function SimulationControls({
             }}
             disabled={disabled}
             className={cn(
-              'h-9 w-full rounded-lg border border-slate-700/60 bg-slate-800/70 text-sm text-slate-100 tabular-nums focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/40',
+              'h-9 w-full rounded-md border border-slate-700/60 bg-slate-800/70 text-sm text-slate-100 tabular-nums focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/40',
               disabled && 'opacity-50 cursor-not-allowed',
             )}
           />
@@ -216,7 +219,7 @@ function SimulationControls({
             }}
             disabled={disabled}
             className={cn(
-              'h-9 w-full rounded-lg border border-slate-700/60 bg-slate-800/70 text-sm text-slate-100 tabular-nums focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/40',
+              'h-9 w-full rounded-md border border-slate-700/60 bg-slate-800/70 text-sm text-slate-100 tabular-nums focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/40',
               disabled && 'opacity-50 cursor-not-allowed',
             )}
           />
@@ -268,7 +271,7 @@ function DistributionChart({
 
   if (loading) {
     return (
-      <div className="h-[220px] w-full rounded-xl border border-slate-700/40 bg-slate-900/50">
+      <div className="h-[220px] w-full rounded-md border border-slate-700/40 bg-slate-900/50">
         <div className="flex h-full items-center justify-center text-sm text-slate-500">
           Computing distribution…
         </div>
@@ -277,7 +280,7 @@ function DistributionChart({
   }
 
   return (
-    <div className="h-[240px] w-full rounded-xl border border-slate-700/40 bg-slate-900/50 p-2">
+    <div className="h-[240px] w-full rounded-md border border-slate-700/40 bg-slate-900/50 p-2">
       <LossCurveChart
         data={data}
         p50={result?.p50_inr}
@@ -299,11 +302,11 @@ function StatBlock({ label, value, accent = 'blue', sub }: {
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-700/40 bg-slate-900/50 p-4 text-center">
-      <div className="text-[0.65rem] uppercase tracking-widest text-slate-500">
+    <div className="kpi-item">
+      <div className="text-xs   text-slate-500">
         {label}
       </div>
-      <div className="mt-1.5 text-2xl font-semibold tabular-nums" style={{ color: accentColor(accent) }}>
+      <div className="kpi-value text-xl" style={{ color: accentColor(accent) }}>
         {value}
       </div>
       {sub && <div className="mt-1 text-xs text-slate-500">{sub}</div>}
@@ -314,12 +317,12 @@ function StatBlock({ label, value, accent = 'blue', sub }: {
 function accentColor(accent: string): string {
   return (
     {
-      blue: '#60a5fa',
-      cyan: '#22d3ee',
-      green: '#34d399',
-      amber: '#fbbf24',
-      rose: '#fb7185',
-    }[accent] ?? '#94a3b8'
+      blue: ACCENT,
+      cyan: ACCENT,
+      green: INK_SECONDARY,
+      amber: INK_SECONDARY,
+      rose: SEVERITY_ROSE,
+    }[accent] ?? INK_MUTED
   );
 }
 
@@ -373,7 +376,7 @@ function TopRiskChips() {
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 rounded-lg border border-slate-700/30 bg-slate-800/30 px-3 py-2"
+            className="flex items-center gap-3 rounded-md border border-slate-700/30 bg-slate-800/30 px-3 py-2"
           >
             <div className="h-6 w-6 rounded-full skeleton" />
             <div className="flex-1 space-y-1.5">
@@ -405,9 +408,9 @@ function TopRiskChips() {
       {rankings.map((r, i) => (
         <div
           key={`${r.cve_id}-${r.asset_name}`}
-          className="flex items-start gap-3 rounded-lg border border-slate-700/30 bg-slate-800/30 px-3 py-2"
+          className="flex items-start gap-3 rounded-md border border-slate-700/30 bg-slate-800/30 px-3 py-2"
         >
-          <span className="mt-0.5 h-6 w-6 shrink-0 rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/10 border border-blue-400/20 text-[0.65rem] font-bold text-cyan-300 flex items-center justify-center">
+          <span className="mt-0.5 h-6 w-6 shrink-0 rounded-full    border border-blue-400/20 text-xs font-bold text-cyan-300 flex items-center justify-center">
             {i + 1}
           </span>
           <div className="min-w-0 flex-1">
@@ -416,16 +419,16 @@ function TopRiskChips() {
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <span>{r.cve_id}</span>
-              <span className="text-slate-600">·</span>
+              <span className="text-slate-500">·</span>
               <span>{r.asset_name}</span>
               {r.is_kev && (
-                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[0.6rem] font-medium text-rose-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                <span className="ml-auto inline-flex items-center gap-1 rounded bg-rose-500/15 px-1.5 py-0.5 text-xs font-medium text-rose-300">
+                  <span className="h-1.5 w-1.5 rounded bg-rose-400" />
                   KEV
                 </span>
               )}
               {r.fictional && (
-                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-slate-700/40 px-1.5 py-0.5 text-[0.6rem] font-medium text-slate-400">
+                <span className="ml-auto inline-flex items-center gap-1 rounded bg-slate-700/40 px-1.5 py-0.5 text-xs font-medium text-slate-400">
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -438,7 +441,7 @@ function TopRiskChips() {
             <div className="text-sm font-semibold text-cyan-300 tabular-nums">
               {r.priority.toFixed(3)}
             </div>
-            <div className="text-[0.6rem] text-slate-500">priority</div>
+            <div className="text-xs text-slate-500">priority</div>
           </div>
         </div>
       ))}
@@ -508,7 +511,7 @@ export default function ScenariosPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
+    <div className="mx-auto max-w-[1440px] px-6 py-6">
       {/* header */}
       <div className="mb-6 flex items-baseline justify-between">
         <div>
@@ -519,13 +522,13 @@ export default function ScenariosPage() {
             Monte Carlo simulation of annual INR loss using explicit, editable inputs.
           </p>
         </div>
-        <div className="rounded-xl border border-slate-700/40 bg-slate-900/50 px-3 py-2 text-xs text-slate-500">
+        <div className="rounded-md border border-slate-700/40 bg-slate-900/50 px-3 py-2 text-xs text-slate-500">
           {state.lastRun ? (
             <span className="text-slate-400">
               Last run {state.lastRun.toLocaleTimeString()}
             </span>
           ) : (
-            <span className="text-slate-600">Not run yet</span>
+            <span className="text-slate-500">Not run yet</span>
           )}
         </div>
       </div>
@@ -566,10 +569,10 @@ export default function ScenariosPage() {
                 onClick={run}
                 disabled={state.running}
                 className={cn(
-                  'flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all',
+                  'flex-1 rounded-md border px-4 py-2.5 text-sm font-medium transition-all',
                   state.running
                     ? 'border-slate-700/40 bg-slate-800/50 text-slate-500 cursor-wait'
-                    : 'border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 text-cyan-200 hover:border-cyan-400/50 hover:shadow-[0_0_18px_rgba(34,211,238,0.25)]',
+                    : 'border-cyan-500/30    text-cyan-200 hover:border-cyan-400/50 ',
                 )}
               >
                 {state.running ? (
@@ -581,7 +584,7 @@ export default function ScenariosPage() {
                     Running…
                   </span>
                 ) : (
-                  'Run Simulation'
+                  'Run simulation'
                 )}
               </button>
               <button
@@ -589,7 +592,7 @@ export default function ScenariosPage() {
                 onClick={resetDefaults}
                 disabled={state.running}
                 className={cn(
-                  'rounded-xl border border-slate-700/40 bg-slate-800/50 px-4 py-2.5 text-sm text-slate-400 transition-colors hover:border-slate-600/60 hover:text-slate-200',
+                  'rounded-md border border-slate-700/40 bg-slate-800/50 px-4 py-2.5 text-sm text-slate-400 transition-colors hover:border-slate-600/60 hover:text-slate-200',
                   state.running && 'opacity-50 cursor-not-allowed',
                 )}
               >
@@ -602,37 +605,37 @@ export default function ScenariosPage() {
         {/* results */}
         <div className="lg:col-span-3 space-y-5">
           {state.error && (
-            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-sm text-rose-200">
+            <div className="rounded-md border border-rose-500/20 bg-rose-500/5 p-4 text-sm text-rose-200">
               {state.error}
             </div>
           )}
 
           {/* summary cards */}
           {state.result && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="kpi-strip">
               <StatBlock
-                label="Expected Annual Loss"
-                value={formatCurrency(state.result.expected_annual_loss_inr, { compact: false })}
+                label="Expected annual loss"
+                value={formatCurrency(state.result.expected_annual_loss_inr, { compact: true })}
                 accent="cyan"
                 sub={`P50 ${formatCurrency(state.result.p50_inr, { compact: true })}`}
               />
               <StatBlock
-                label="P95 Worst Case"
-                value={formatCurrency(state.result.p95_inr, { compact: false })}
+                label="P95 annual loss"
+                value={formatCurrency(state.result.p95_inr, { compact: true })}
                 accent="rose"
                 sub={`P10 ${formatCurrency(state.result.p10_inr, { compact: true })}`}
               />
               <StatBlock
-                label="P10 Best Case"
-                value={formatCurrency(state.result.p10_inr, { compact: false })}
+                label="P10 annual loss"
+                value={formatCurrency(state.result.p10_inr, { compact: true })}
                 accent="green"
                 sub={`P90 ${formatCurrency(state.result.p90_inr, { compact: true })}`}
               />
               <StatBlock
-                label="Zero-Loss Share"
+                label="Zero-loss share"
                 value={`${(state.result.zero_loss_share * 100).toFixed(1)}%`}
                 accent="blue"
-                sub={`Mean event ₹${state.result.mean_event_severity_inr.toLocaleString('en-IN')}`}
+                sub={`Mean event ${formatCurrency(state.result.mean_event_severity_inr)}`}
               />
             </div>
           )}
@@ -641,37 +644,37 @@ export default function ScenariosPage() {
           <div className="risk-panel p-5">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium text-slate-300">
-                Annual Loss Distribution
+                Annual loss distribution
               </h2>
-              <span className="text-[0.65rem] text-slate-500">
+              <span className="text-xs text-slate-500">
                 {state.result ? `${state.result.iterations.toLocaleString('en-IN')} iterations` : ''}
               </span>
             </div>
             <DistributionChart result={state.result} loading={state.running} />
             {state.result && (
-              <div className="mt-3 flex flex-wrap gap-2 text-[0.65rem] text-slate-500">
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
                 {state.result.p10_inr != null && (
-                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-300">
+                  <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-emerald-300">
                     P10 {formatCurrency(state.result.p10_inr, { compact: true, currency: false })}
                   </span>
                 )}
                 {state.result.p50_inr != null && (
-                  <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-cyan-300">
+                  <span className="rounded bg-cyan-500/15 px-2 py-0.5 text-cyan-300">
                     P50 {formatCurrency(state.result.p50_inr, { compact: true, currency: false })}
                   </span>
                 )}
                 {state.result.p90_inr != null && (
-                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-300">
+                  <span className="rounded bg-amber-500/15 px-2 py-0.5 text-amber-300">
                     P90 {formatCurrency(state.result.p90_inr, { compact: true, currency: false })}
                   </span>
                 )}
                 {state.result.p95_inr != null && (
-                  <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-rose-300">
+                  <span className="rounded bg-rose-500/15 px-2 py-0.5 text-rose-300">
                     P95 {formatCurrency(state.result.p95_inr, { compact: true, currency: false })}
                   </span>
                 )}
                 {state.result.p99_inr != null && (
-                  <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-violet-300">
+                  <span className="rounded bg-violet-500/15 px-2 py-0.5 text-violet-300">
                     P99 {formatCurrency(state.result.p99_inr, { compact: true, currency: false })}
                   </span>
                 )}
@@ -680,12 +683,12 @@ export default function ScenariosPage() {
           </div>
 
           {/* assumptions footnote */}
-          <div className="rounded-xl border border-slate-700/30 bg-slate-800/30 p-3 text-xs text-slate-500">
+          <div className="rounded-md border border-slate-700/30 bg-slate-800/30 p-3 text-xs text-slate-500">
             <span className="font-medium text-slate-400">Assumptions: </span>
-            PERT severity (low/likely/high), Poisson event frequency, Binomial
-            compromise probability, fixed seed ={' '}
-            {request.seed ?? 20261027}. All inputs are editable and labeled; the
-            backend returns a range (P50 / P95), never a single point estimate.
+            PERT sampling is applied to event frequency, compromise probability,
+            and downtime, recovery, regulatory, and reputation loss components,
+            using fixed seed = {request.seed ?? 20261027}. Inputs are editable and
+            labeled; results include a range (P50 / P95), not a single point estimate.
           </div>
 
           {/* top risks */}

@@ -9,11 +9,23 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { cn } from '@/lib/format';
+import { cn, formatCurrencyCompact } from '@/lib/format';
+import {
+  ACCENT,
+  ACCENT_SOFT,
+  INK_MUTED,
+  INK_PRIMARY,
+  INK_SECONDARY,
+  NEUTRAL_400,
+  SEVERITY_AMBER,
+  SEVERITY_EMERALD,
+  SEVERITY_ROSE,
+} from '@/lib/chart-colors';
 
 export default function LossCurveChart({
   data,
   p10,
+  p50,
   p90,
   p95,
   p99,
@@ -39,12 +51,7 @@ export default function LossCurveChart({
   }
 
   const formatX = (v: number) => `${v.toFixed(0)}%`;
-  const formatY = (v: number) => {
-    // compact INR for the axis label
-    if (v >= 1_00_00_000) return `${(v / 1_00_00_000).toFixed(1)}Cr`;
-    if (v >= 1_00_000) return `${(v / 1_00_000).toFixed(1)}L`;
-    return `${Math.round(v).toLocaleString('en-IN')}`;
-  };
+  const formatY = (v: number) => formatCurrencyCompact(v);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -52,31 +59,22 @@ export default function LossCurveChart({
         data={data}
         margin={{ top: 8, right: 12, left: 4, bottom: 8 }}
       >
-        <defs>
-          <linearGradient id="lossGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.02} />
-          </linearGradient>
-          <linearGradient id="lossArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.18} />
-            <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.0} />
-          </linearGradient>
-        </defs>
+
 
         <XAxis
           dataKey="percent"
           type="number"
           domain={[0, 100]}
           tickFormatter={formatX}
-          tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'inherit' }}
-          axisLine={{ stroke: 'rgba(148,163,184,0.15)' }}
+          tick={{ fill: INK_MUTED, fontSize: 12, fontFamily: 'inherit' }}
+          axisLine={{ stroke: 'rgba(143,154,165,0.15)' }}
           tickLine={false}
           interval="preserveStartEnd"
         />
 
         <YAxis
           tickFormatter={formatY}
-          tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'inherit' }}
+          tick={{ fill: INK_MUTED, fontSize: 12, fontFamily: 'inherit' }}
           axisLine={false}
           tickLine={false}
           width={48}
@@ -84,14 +82,15 @@ export default function LossCurveChart({
 
         <Tooltip
           contentStyle={{
-            backgroundColor: 'rgba(20,33,62,0.92)',
-            border: '1px solid rgba(34,211,238,0.18)',
-            borderRadius: 8,
-            fontSize: 11,
-            color: '#e2e8f0',
+            backgroundColor: 'var(--surface-panel)',
+            border: '1px solid var(--hairline-strong)',
+            borderRadius: 4,
+            fontFamily: 'var(--font-mono), monospace',
+            fontSize: 12,
+            color: INK_PRIMARY,
           }}
-          labelStyle={{ color: '#94a3b8' }}
-          formatter={(value: number) => [`₹${value.toLocaleString('en-IN')}`, 'Loss']}
+          labelStyle={{ color: INK_MUTED }}
+          formatter={(value: number) => [formatCurrencyCompact(value), 'Loss']}
           labelFormatter={(label) => `P${label}%`}
         />
 
@@ -99,14 +98,14 @@ export default function LossCurveChart({
         {p10 != null && (
           <ReferenceLine
             x={10}
-            stroke="#34d399"
+            stroke={SEVERITY_EMERALD}
             strokeDasharray="4 4"
             strokeOpacity={0.55}
             label={{
               value: 'P10',
               position: 'top',
-              fill: '#34d399',
-              fontSize: 9,
+              fill: SEVERITY_EMERALD,
+              fontSize: 12,
               fontFamily: 'inherit',
             }}
           />
@@ -114,29 +113,30 @@ export default function LossCurveChart({
         {p90 != null && (
           <ReferenceLine
             x={90}
-            stroke="#fbbf24"
+            stroke={SEVERITY_AMBER}
             strokeDasharray="4 4"
             strokeOpacity={0.55}
             label={{
               value: 'P90',
               position: 'top',
-              fill: '#fbbf24',
-              fontSize: 9,
+              fill: SEVERITY_AMBER,
+              fontSize: 12,
               fontFamily: 'inherit',
             }}
           />
         )}
+        {p50 != null && <ReferenceLine x={50} stroke={INK_SECONDARY} strokeDasharray="3 3" label={{value:'P50',position:'insideTopRight',fill:INK_SECONDARY,fontSize:12}} />}
         {p95 != null && (
           <ReferenceLine
             x={95}
-            stroke="#fb7185"
+            stroke={SEVERITY_ROSE}
             strokeDasharray="4 4"
             strokeOpacity={0.6}
             label={{
               value: 'P95',
               position: 'top',
-              fill: '#fb7185',
-              fontSize: 9,
+              fill: SEVERITY_ROSE,
+              fontSize: 12,
               fontFamily: 'inherit',
             }}
           />
@@ -144,27 +144,27 @@ export default function LossCurveChart({
         {p99 != null && (
           <ReferenceLine
             x={99}
-            stroke="#a78bfa"
+            stroke={NEUTRAL_400}
             strokeDasharray="4 4"
             strokeOpacity={0.5}
             label={{
               value: 'P99',
               position: 'top',
-              fill: '#a78bfa',
-              fontSize: 9,
+              fill: NEUTRAL_400,
+              fontSize: 12,
               fontFamily: 'inherit',
             }}
           />
         )}
 
         {/* distribution area */}
-        <Area
+        <Area isAnimationActive={false}
           type="monotone"
           dataKey="loss_inr"
-          stroke="#22d3ee"
+          stroke={ACCENT}
           strokeWidth={1.4}
           strokeOpacity={0.85}
-          fill="url(#lossGrad)"
+          fill={ACCENT_SOFT}
         />
       </AreaChart>
     </ResponsiveContainer>

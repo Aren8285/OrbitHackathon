@@ -1,131 +1,35 @@
 import type { Config } from 'tailwindcss';
 
+const neutral = {
+  50: '#f4f5f5', 100: '#e6e8ea', 200: '#d7dbdf', 300: '#bcc3ca',
+  400: '#9aa4ad', 500: '#8b959e', 600: '#65707a', 700: '#3b434c',
+  800: '#252b32', 900: '#191e24', 950: '#111418',
+};
+const accent = {
+  50: '#eef3f6', 100: '#dce7ee', 200: '#c6d8e3', 300: '#b1c7d6',
+  400: '#9cb7ca', 500: '#7e9caf', 600: '#637f93', 700: '#465f72',
+  800: '#304454', 900: '#24333e', 950: '#17232c',
+};
 const config: Config = {
-  content: ['./app/**/*.{js,ts,jsx,tsx,mdx}', './components/**/*.{js,ts,jsx,tsx,mdx}'],
-  safelist: [
-    {
-      pattern:
-        /^(bg-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950))$/,
-    },
-    {
-      pattern:
-        /^(text-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950))$/,
-    },
-    {
-      pattern:
-        /^(border-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950))$/,
-    },
-    {
-      pattern:
-        /^(ring-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950))$/,
-    },
-    {
-      pattern:
-        /^(stroke-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950))$/,
-    },
-    {
-      pattern:
-        /^(fill-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950))$/,
-    },
-    {
-      pattern:
-        /^(from-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950))$/,
-    },
-    {
-      pattern:
-        /^(via-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950))$/,
-    },
-    {
-      pattern:
-        /^(to-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950))$/,
-    },
-    {
-      pattern: /^shadow-(?:none|sm|base|lg|xl|2xl|inner|drop)/,
-    },
-  ],
+  content: ['./app/**/*.{js,ts,jsx,tsx,mdx}', './components/**/*.{js,ts,jsx,tsx,mdx}', './lib/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        risk: {
-          bg: {
-            primary: '#050b18',
-            secondary: '#0a1428',
-            card: '#0d1a31',
-            raised: '#11233f',
-          },
-          border: {
-            DEFAULT: '#1d3557',
-            strong: '#2a4a72',
-          },
-          text: {
-            primary: '#e6f1ff',
-            secondary: '#9fb4d6',
-            muted: '#6379a4',
-          },
-          accent: {
-            blue: '#1f7dff',
-            cyan: '#22d3ee',
-            teal: '#14b8a6',
-            green: '#34d399',
-            amber: '#fbbf24',
-            rose: '#fb7185',
-            purple: '#a78bfa',
-          },
-        },
-      },
-      backgroundImage: {
-        'risk-gradient-hero': 'linear-gradient(135deg, #0a1832 0%, #142a52 100%)',
-        'risk-gradient-card':
-          'linear-gradient(180deg, rgba(31, 125, 255, 0.06) 0%, rgba(34, 211, 238, 0.02) 100%)',
-      },
-      boxShadow: {
-        'risk-glow-blue': '0 0 24px rgba(31, 125, 255, 0.15)',
-        'risk-glow-cyan': '0 0 24px rgba(34, 211, 238, 0.12)',
+        slate: neutral, gray: neutral,
+        cyan: accent, blue: accent, sky: accent, indigo: accent, violet: neutral,
+        rose: {100:'#e7bfbc',200:'#ddb0ab',300:'#ce918b',400:'#c1817b',500:'#b06d67',600:'#925a55',700:'#6c4440',900:'#382624'},
+        orange: {100:'#e7cfb6',200:'#dbc0a0',300:'#c5a27d',400:'#bd9670',500:'#ac855e',600:'#906e4d',700:'#6b533d'},
+        amber: {100:'#e5d8b9',200:'#d7c69e',300:'#c4ad7d',400:'#b6a06e',500:'#a38d5e',600:'#8a764e',700:'#66583b'},
+        emerald: {100:'#d2dfd2',200:'#bed0bd',300:'#a1b89e',400:'#8fa98c',500:'#7a9577',600:'#617b5f',700:'#495c47'},
       },
       fontFamily: {
-        sans: [
-          'var(--font-sans)',
-          'Inter',
-          'system-ui',
-          '-apple-system',
-          'Segoe UI',
-          'Roboto',
-          'Helvetica',
-          'Arial',
-          'sans-serif',
-        ],
-        mono: [
-          'var(--font-mono)',
-          'JetBrains Mono',
-          'ui-monospace',
-          'Cascadia Code',
-          'Menlo',
-          'Consolas',
-          'monospace',
-        ],
+        sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'IBM Plex Mono', 'ui-monospace', 'monospace'],
       },
-      keyframes: {
-        'fade-slide': {
-          '0%': { opacity: '0', transform: 'translateY(6px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        shimmer: {
-          '0%': { backgroundPosition: '200% 0' },
-          '100%': { backgroundPosition: '-200% 0' },
-        },
-        'pulse-glow': {
-          '0%, 100%': { boxShadow: '0 0 12px rgba(34, 211, 238, 0.2)' },
-          '50%': { boxShadow: '0 0 20px rgba(34, 211, 238, 0.4)' },
-        },
-      },
-      animation: {
-        'fade-slide': 'fade-slide 0.28s ease-out both',
-        shimmer: 'shimmer 1.6s infinite ease-in-out',
-        'pulse-glow': 'pulse-glow 3s infinite ease-in-out',
-      },
+      fontSize: { xs: ['12px','16px'], sm: ['14px','20px'], base: ['16px','24px'], lg: ['20px','28px'], xl: ['20px','28px'], '2xl': ['28px','36px'], '3xl': ['28px','36px'] },
+      borderRadius: { DEFAULT:'4px', md:'6px', lg:'6px', xl:'6px', '2xl':'6px' },
     },
   },
   plugins: [],
 };
-
 export default config;

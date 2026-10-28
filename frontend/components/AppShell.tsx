@@ -137,10 +137,10 @@ function NavLinks({ orientation }: { orientation: 'rail' | 'strip' }) {
       {NAV_GROUPS.map((group) => (
         <div
           key={group.label}
-          className={orientation === 'rail' ? 'mb-5' : 'flex items-center gap-1'}
+          className={orientation === 'rail' ? 'mb-6' : 'flex items-center gap-1'}
         >
           {orientation === 'rail' && (
-            <div className="mb-2 px-3 text-[0.65rem] font-medium uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
+            <div className="mb-2 px-3 text-xs font-medium   text-[color:var(--ink-faint)]">
               {group.label}
             </div>
           )}
@@ -169,7 +169,7 @@ function NavLinks({ orientation }: { orientation: 'rail' | 'strip' }) {
                   {active && (
                     <span
                       aria-hidden
-                      className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-[color:var(--accent)]"
+                      className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 bg-[color:var(--accent)]"
                     />
                   )}
                   <span
@@ -194,87 +194,32 @@ function NavLinks({ orientation }: { orientation: 'rail' | 'strip' }) {
 export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
-      {/* Persistent left rail (desktop) */}
-      <aside
-        className="fixed inset-y-0 left-0 z-10 hidden w-60 flex-col border-r border-[color:var(--hairline)] bg-[color:var(--surface-rail)] lg:flex"
-      >
-        <div className="flex h-14 items-center gap-3 border-b border-[color:var(--hairline)] px-4">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="RiskOps home">
-            <svg className="h-7 w-7 text-[color:var(--accent)]" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path
-                d="M12 3l7.5 3.1V14c0 5-3.2 8.2-7.5 10-4.3-1.8-7.5-5-7.5-10V6.1z"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M9 12.5l2.2 2.2 4-4.5"
-                stroke="#22d3ee"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className="text-sm font-semibold tracking-tight text-[color:var(--ink-primary)]">
-              RiskOps
-            </span>
-            <span className="risk-id hidden xl:inline">FinPay</span>
+      <a className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:bg-slate-900 focus:p-4" href="#main-content">Skip to content</a>
+      <aside className="app-rail">
+        <div className="flex h-12 items-center border-b border-[color:var(--hairline)] px-4">
+          <Link href="/" className="flex items-center gap-2" aria-label="RiskOps home">
+            <ShieldCheck className="h-5 w-5 text-[color:var(--accent)]" aria-hidden="true" />
+            <span className="text-base font-semibold">RiskOps</span>
           </Link>
         </div>
-
-        <nav aria-label="Sections" className="flex-1 overflow-y-auto pt-5">
-          <NavLinks orientation="rail" />
-        </nav>
-
-        <div className="border-t border-[color:var(--hairline)] p-4 text-[0.68rem] leading-relaxed text-[color:var(--ink-muted)]">
-          Figures derive from metric engines in <code className="risk-id">backend/app/services</code> over
-          the seeded FinPay dataset.
+        <nav aria-label="Sections" className="flex-1 overflow-y-auto pt-6"><NavLinks orientation="rail" /></nav>
+        <div className="border-t border-[color:var(--hairline)] px-4 py-4 text-xs text-[color:var(--ink-muted)]">
+          Shared demo access<br />Fictional FinPay data
         </div>
       </aside>
-
-      {/* Main column */}
-      <div className="flex min-h-screen w-full flex-col lg:pl-60">
-        <header className="sticky top-0 z-20 border-b border-[color:var(--hairline)] bg-[color:var(--surface-page)]/90 backdrop-blur">
-          {/* Mobile brand + status */}
-          <div className="flex h-14 items-center justify-between px-4 lg:hidden">
-            <Link href="/" className="flex items-center gap-2.5" aria-label="RiskOps home">
-              <svg className="h-6 w-6 text-[color:var(--accent)]" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path
-                  d="M12 3l7.5 3.1V14c0 5-3.2 8.2-7.5 10-4.3-1.8-7.5-5-7.5-10V6.1z"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M9 12.5l2.2 2.2 4-4.5"
-                  stroke="#22d3ee"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="text-sm font-semibold tracking-tight text-[color:var(--ink-primary)]">
-                RiskOps
-              </span>
-            </Link>
+      <div className="app-column flex min-h-screen flex-col">
+        <header className="app-header">
+          <div className="app-mobile-bar">
+            <Link href="/" className="text-sm font-semibold" aria-label="RiskOps home">FinPay Solutions</Link>
             <ApiStatusPill />
           </div>
-
-          {/* Mobile nav strip */}
-          <div className="flex items-center px-2 pb-2 lg:hidden">
-            <NavLinks orientation="strip" />
-          </div>
-
-          {/* Desktop: section context + live API status */}
-          <div className="hidden h-14 items-center justify-between px-6 lg:flex">
-            <div className="text-sm text-[color:var(--ink-muted)]">
-              Quantified cyber-risk · FinPay demo corporation
-            </div>
+          <div className="app-mobile-nav"><NavLinks orientation="strip" /></div>
+          <div className="app-desktop-bar">
+            <div className="flex items-center gap-4"><span className="text-sm font-medium">FinPay Solutions</span><span className="text-xs text-[color:var(--ink-muted)]">Security operations</span></div>
             <ApiStatusPill />
           </div>
         </header>
-
-        <main className="min-w-0 flex-1">{children}</main>
+        <main id="main-content" className="min-w-0 flex-1">{children}</main>
       </div>
     </div>
   );

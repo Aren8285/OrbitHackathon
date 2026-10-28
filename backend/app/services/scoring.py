@@ -9,7 +9,7 @@ Documented normalization rules
 - 1-10 inventory scales (revenue_dependency, operational_impact, compliance_impact,
   criticality): value / 10, clamped to [0, 1].
 - data_classification -> data sensitivity on the same 1-10 scale:
-  Public=1, Internal=4, Confidential=7, Restricted=10, unknown -> Internal(4).
+  Public=2, Internal=5, Confidential=8, Restricted=10, unknown -> Internal(5).
   The mapping is a documented company calibration, not a fabricated number.
 - CVSS 0-10 -> score / 10.
 - EPSS is already 0-1 and used as-is (clamped).
@@ -58,9 +58,9 @@ PRIORITY_WEIGHTS = {
 
 # 1-10 business calibration for data classification levels.
 DATA_SENSITIVITY_SCALE = {
-    'public': 1,
-    'internal': 4,
-    'confidential': 7,
+    'public': 2,
+    'internal': 5,
+    'confidential': 8,
     'restricted': 10,
 }
 UNKNOWN_DATA_SENSITIVITY = DATA_SENSITIVITY_SCALE['internal']
@@ -180,3 +180,14 @@ def residual_risk(inherent_risk: float, combined_effectiveness: float) -> float:
     Must-pass check (coder.md): inherent 2 crore with combined 0.58 -> 84 lakh.
     """
     return float(inherent_risk) * (1.0 - _clamp01(combined_effectiveness))
+
+
+def classify_priority(kev, internet_facing, criticality, priority_score):
+    from app.config import PRIORITY_P0_CRITICALITY, PRIORITY_P1_THRESHOLD, PRIORITY_P2_THRESHOLD
+    if kev and internet_facing and criticality >= PRIORITY_P0_CRITICALITY:
+        return 'P0'
+    if priority_score >= PRIORITY_P1_THRESHOLD:
+        return 'P1'
+    if priority_score >= PRIORITY_P2_THRESHOLD:
+        return 'P2'
+    return 'P3'

@@ -1,20 +1,4 @@
-"""NumPy Monte Carlo annual-loss simulation.
-
-Reproduces the coder.md annual-loss logic by sampling rather than one formula:
-    annual loss = sum over the year's events of (compromise x loss severity),
-whose expectation equals frequency x compromise_probability x severity.
-
-Model (all assumptions explicit, nothing hardcoded for display):
-- Event frequency per year ~ Poisson(lambda)      (event frequency input)
-- Each event compromises with probability p      (compromise probability input)
-- Each compromised event costs one draw from a
-  documented PERT distribution (lambda=4) over
-  (low, likely, high) INR                        (loss severity inputs)
-- 10,000 simulations by default, reproducible via a fixed seed.
-- Outputs: expected annual loss, P10/P25/P50/P75/P95/P99 in integer INR.
-- No fake precision: stats are rounded to the nearest 1,000 INR and the
-  rounding is reported in the result.
-"""
+"""Vectorized modified-Beta PERT primitives; scenario_engine defines annual loss."""
 
 from dataclasses import dataclass
 from typing import Tuple
@@ -29,7 +13,7 @@ DEFAULT_ITERATIONS: int = 10_000        # coder.md build item 5
 MAX_ITERATIONS: int = 50_000
 MAX_EVENTS_PER_YEAR: float = 50.0
 PERT_LAMBDA: float = 4.0                # standard PERT shape parameter
-ROUNDING_INR: int = 1_000               # reported rounding for every money stat
+ROUNDING_INR: int = 1               # reported rounding for every money stat
 
 DISTRIBUTION = 'pert'
 
@@ -102,44 +86,13 @@ def simulate_loss_distribution(
         severity_low_inr, severity_likely_inr, severity_high_inr, iterations,
     )
 
+    from app.services.scenario_engine import describe
     rng = np.random.default_rng(seed)
-    events = rng.poisson(frequency_per_year, size=iterations)
-    compromised = rng.binomial(events, compromise_probability)
-
-    losses = np.zeros(iterations, dtype=np.float64)
-    total_events = int(compromised.sum())
-    severities = np.empty(0)
-    if total_events > 0:
-        severities = sample_pert(
-            rng, severity_low_inr, severity_likely_inr, severity_high_inr, total_events
-        )
-        np.add.at(losses, np.repeat(np.arange(iterations), compromised), severities)
-
-    percentiles = np.percentile(losses, [10, 25, 50, 75, 90, 95, 99])
-
-    def money(value: float) -> int:
-        return int(round(float(value) / ROUNDING_INR) * ROUNDING_INR)
-
-    return {
-        'distribution': DISTRIBUTION,
-        'pert_lambda': PERT_LAMBDA,
-        'iterations': iterations,
-        'seed': seed,
-        'expected_annual_loss_inr': money(losses.mean()),
-        'p10_inr': money(percentiles[0]),
-        'p25_inr': money(percentiles[1]),
-        'p50_inr': money(percentiles[2]),
-        'p75_inr': money(percentiles[3]),
-        'p90_inr': money(percentiles[4]),
-        'p95_inr': money(percentiles[5]),
-        'p99_inr': money(percentiles[6]),
-        'max_annual_loss_inr': money(losses.max()),
-        'mean_event_severity_inr': money(severities.mean()) if severities.size else 0,
-        'expected_compromised_events': round(float((events * compromise_probability).mean()), 2),
-        'zero_loss_share': round(float((losses == 0).mean()), 4),
-        'rounding_inr': ROUNDING_INR,
-        'reproducible': True,
-    }
+    severity = sample_pert(rng, severity_low_inr, severity_likely_inr, severity_high_inr, iterations)
+    result = describe(frequency_per_year * compromise_probability * severity, seed, iterations)
+    result['mean_event_severity_inr'] = int(round(float(severity.mean())))
+    result['expected_compromised_events'] = frequency_per_year * compromise_probability
+    return result
 
 
 def p50_p95(simulation_result: dict) -> dict:

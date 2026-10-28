@@ -1,8 +1,9 @@
 import re
 
-from typing import Dict, List, Optional
+from datetime import date
+from typing import Dict, List, Optional, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 VULN_STATUSES = {'open', 'accepted', 'mitigated', 'false_positive'}
 ASSET_ID_PATTERN = r'^[A-Za-z][A-Za-z0-9._-]{0,49}$'
@@ -12,7 +13,7 @@ CVE_PATTERN = r'^CVE-\d{4}-\d{4,7}$'
 class StrictModel(BaseModel):
     """Base for API payloads: reject unknown/misspelled fields (e.g. `critcalaity`)."""
 
-    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
+    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True, extra='forbid')
 
 
 # ---------------------------------------------------------------- Assets
@@ -44,7 +45,22 @@ class AssetCreate(AssetBase):
     pass
 
 
+class AssetScenarioLoss(BaseModel):
+    scenario_key: str
+    scenario_name: str
+    expected_annual_loss_inr: int
+    p50_inr: int
+    p95_inr: int
+
+
 class AssetOut(AssetBase):
+    priority_label: str = 'P3'
+    coverage: Literal['linked', 'none'] = 'none'
+    coverage_reason: Optional[str] = 'No risk scenario is linked to this asset'
+    expected_annual_loss_inr: Optional[int] = None
+    p50_inr: Optional[int] = None
+    p95_inr: Optional[int] = None
+    scenario_losses: List[AssetScenarioLoss] = Field(default_factory=list)
     id: int
 
 
@@ -83,6 +99,8 @@ class VulnerabilityCreate(VulnerabilityBase):
 
 class VulnerabilityOut(VulnerabilityBase):
     id: int
+    priority_label: str = 'P3'
+    priority_score: float = 0
 
 
 # ---------------------------------------------------------------- Controls
@@ -97,7 +115,7 @@ class ControlBase(StrictModel):
     eff_low: float = Field(0.0, ge=0.0, le=1.0)
     eff_likely: float = Field(0.0, ge=0.0, le=1.0)
     eff_high: float = Field(0.0, ge=0.0, le=1.0)
-    annual_cost: float = Field(0.0, ge=0.0)
+    annual_cost: int = Field(0, ge=0.0)
 
     @field_validator('control_key')
     @classmethod
@@ -145,8 +163,8 @@ class ScenarioBase(BaseModel):
     name: str
     description: Optional[str] = None
     probability: float = 0.0
-    impact: float = 0.0
-    annualized_loss: float = 0.0
+    impact: int = 0
+    annualized_loss: int = 0
 
 
 class ScenarioCreate(ScenarioBase):
@@ -160,9 +178,9 @@ class Scenario(ScenarioBase):
 
 class RemediationBase(BaseModel):
     title: str
-    priority: int = 1
-    estimated_cost: float = 0.0
-    status: str = 'planned'
+    priority: Literal['P0', 'P1', 'P2', 'P3'] = 'P3'
+    estimated_cost: int = 0
+    status: str = 'open'
     summary: Optional[str] = None
 
 
@@ -188,6 +206,7 @@ class HealthStatus(BaseModel):
 
 
 class FindingSummary(StrictModel):
+    priority_label: str = 'P3'
     finding_id: int
     cve_id: str
     asset_asset_id: str
@@ -207,7 +226,7 @@ class ControlSummary(StrictModel):
     category: str
     kev_relevant: bool = False
     tlp: Optional[str] = None
-    cost_inr: float
+    cost_inr: int
     cost_note: Optional[str] = None
     effectiveness: float
     effectiveness_note: Optional[str] = None
@@ -220,20 +239,20 @@ class RemediationPlanItem(StrictModel):
 
 class RemediationPlan(StrictModel):
     plan: List[RemediationPlanItem]
-    total_cost: float
+    total_cost: int
 
 
 class ControlCost(StrictModel):
     control_id: str
     control_name: str
     category: str
-    cost_inr: float
+    cost_inr: int
 
 
 # ---------------------------------------------------------------- Remediation tasks (persisted status)
 
 
-TASK_STATUSES = ('planned', 'completed', 'verified')
+TASK_STATUSES = ('open', 'in_progress', 'completed', 'verified')
 
 
 class RemediationTaskUpdate(StrictModel):
@@ -245,7 +264,9 @@ class RemediationTaskUpdate(StrictModel):
 
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True, extra='forbid')
 
-    status: str = Field(..., description='planned | completed | verified')
+    coverage: Optional[float] = Field(None, ge=0, le=1)
+    owner: Optional[str] = Field(None, min_length=1, max_length=255)
+    status: str = Field(..., description='open | in_progress | completed | verified')
 
     @field_validator('status')
     @classmethod
@@ -256,11 +277,19 @@ class RemediationTaskUpdate(StrictModel):
 
 
 class RemediationTaskOut(StrictModel):
+    id: Optional[int] = None
+    coverage: float
+    priority: Literal['P0', 'P1', 'P2', 'P3']
+    asset_id: str
+    vulnerability_id: Optional[int] = None
+    estimated_risk_reduction: int = Field(..., ge=0)
+    due_date: date
+    owner: str
     control_key: str
     control_name: str
     category: str
     status: str
-    cost_inr: float = Field(..., ge=0)
+    cost_inr: int = Field(..., ge=0)
     effectiveness: float = Field(..., ge=0, le=1)
     counts_toward_achieved_risk: bool
     updated_at: Optional[str] = None
@@ -293,6 +322,7 @@ class RemediationImpact(StrictModel):
 
 
 class CopilotTopRisk(StrictModel):
+    priority_label: str = 'P3'
     rank: int = Field(..., ge=1, le=100)
     asset_id: str
     cve_id: str
@@ -335,7 +365,7 @@ class CopilotMetrics(StrictModel):
 class AiExplainResponse(StrictModel):
     explanation: str = Field(..., min_length=1)
     source: str = Field(..., description="'llm' when the provider answered, 'fallback' otherwise")
-    model: Optional[str] = None
+    model: str = 'template'
     fallback_reason: Optional[str] = None
     metrics: CopilotMetrics
     disclaimer: str
@@ -364,6 +394,27 @@ class ImpactAssumptionUpdate(BaseModel):
     assumed_impact_inr: Optional[int] = Field(None, ge=0, le=10_000_000_000, description='integer INR')
 
 
+class RiskTopAsset(BaseModel):
+    asset_id: str
+    asset_name: str
+    priority_label: Literal['P0', 'P1', 'P2', 'P3']
+    expected_annual_loss_inr: Optional[int] = None
+    p50_inr: Optional[int] = None
+    p95_inr: Optional[int] = None
+    coverage: Literal['linked', 'none']
+    coverage_reason: Optional[str] = None
+
+
+class UnmodeledTopRisk(BaseModel):
+    """Assets without a modeled loss: excluded from top_risks, shown separately."""
+
+    asset_id: str
+    asset_name: str
+    priority_label: Literal['P0', 'P1', 'P2', 'P3']
+    coverage: Literal['linked', 'none'] = 'none'
+    reason: Optional[str] = None
+
+
 class RiskSummary(BaseModel):
     total_assets: int
     critical_assets: int
@@ -374,9 +425,24 @@ class RiskSummary(BaseModel):
     financial_note: str
 
 
+    overall_risk_score: float
+    open_p0_p1_count: int
+    scenario_count: int
+    expected_annual_loss_inr: int
+    mean: int
+    p50_inr: int
+    p90_inr: int
+    p95_inr: int
+    p99_inr: int
+    histogram: List[Dict[str, int]]
+    top_risks: List[RiskTopAsset] = Field(default_factory=list)
+    unmodeled_risks: List[UnmodeledTopRisk] = Field(default_factory=list)
+
+
 class FindingRanking(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    priority_label: Literal['P0', 'P1', 'P2', 'P3']
     asset_id: str
     asset_name: str
     cve_id: str
@@ -398,6 +464,7 @@ class FindingRanking(BaseModel):
 
 
 class AssetRiskRanking(BaseModel):
+    priority_label: Literal['P0', 'P1', 'P2', 'P3']
     asset_id: str
     asset_name: str
     criticality: float
@@ -407,12 +474,19 @@ class AssetRiskRanking(BaseModel):
     max_technical_risk: float
     max_priority: float
     assumed_impact_inr: int
+    coverage: Literal['linked', 'none']
+    coverage_reason: Optional[str] = None
+    expected_annual_loss_inr: Optional[int] = None
+    p50_inr: Optional[int] = None
+    p95_inr: Optional[int] = None
+    scenario_losses: List[AssetScenarioLoss] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------- Simulation & optimization
 
 
 class SimulationRequest(BaseModel):
+    scenario_key: Optional[str] = None
     frequency_per_year: float = Field(2.0, ge=0, le=50, description='Expected loss events per year')
     compromise_probability: float = Field(0.5, ge=0.0, le=1.0)
     downtime_inr: int = Field(0, ge=0)
@@ -434,6 +508,8 @@ class SimulationRequest(BaseModel):
 
 
 class SimulationResult(BaseModel):
+    mean: int
+    histogram: List[Dict[str, int]]
     distribution: str
     iterations: int
     seed: int
@@ -446,8 +522,8 @@ class SimulationResult(BaseModel):
     p90_inr: int
     p99_inr: int
     max_annual_loss_inr: int
-    mean_event_severity_inr: int
-    expected_compromised_events: float
+    mean_event_severity_inr: int = 0
+    expected_compromised_events: float = 0
     zero_loss_share: float
     rounding_inr: int
     reproducible: bool
@@ -462,13 +538,19 @@ class ControlRecommendation(BaseModel):
     annual_cost_inr: int
     effectiveness: float
     marginal_benefit_inr: int
-    benefit_per_rupee: float
+    benefit_per_rupee: Optional[float]
     combined_after: float
     cumulative_cost_inr: int
     residual_after_inr: int
 
 
 class OptimizerRecommendation(BaseModel):
+    selected_controls: List[str]
+    total_cost: int
+    expected_loss_before: int
+    expected_loss_after: int
+    percent_reduction: float
+    roi: Optional[float]
     budget_inr: int
     spent_inr: int
     remaining_budget_inr: int
@@ -480,5 +562,57 @@ class OptimizerRecommendation(BaseModel):
     total_expected_reduction_inr: int
     recommended_controls: List[ControlRecommendation]
     never_exceeded_budget: bool
-    asset_id: str
+    asset_id: Optional[str] = None
+    warning: Optional[str] = None
     assumptions: dict
+
+
+class RiskScenarioOut(StrictModel):
+    simulation: Optional[dict] = None
+    id: int
+    company_id: int
+    scenario_key: str
+    name: str
+    asset_id: str
+    assumptions_note: str
+    applicable_control_keys: List[str]
+    frequency_low: float
+    frequency_likely: float
+    frequency_high: float
+    compromise_probability_low: float
+    compromise_probability_likely: float
+    compromise_probability_high: float
+    downtime_cost_low: int
+    downtime_cost_likely: int
+    downtime_cost_high: int
+    recovery_cost_low: int
+    recovery_cost_likely: int
+    recovery_cost_high: int
+    regulatory_cost_low: int
+    regulatory_cost_likely: int
+    regulatory_cost_high: int
+    reputation_cost_low: int
+    reputation_cost_likely: int
+    reputation_cost_high: int
+
+
+class OptimizerRequest(StrictModel):
+    budget: int = Field(..., ge=0, validation_alias=AliasChoices('budget', 'budget_inr'))
+    must_include: List[str] = Field(default_factory=list)
+    exclude: List[str] = Field(default_factory=list)
+    asset_id: Optional[str] = None
+
+    @field_validator('must_include', 'exclude')
+    @classmethod
+    def unique_keys(cls, value):
+        if len(value) != len(set(value)):
+            raise ValueError('Control keys must be unique')
+        return value
+
+
+class AiStatus(BaseModel):
+    provider: str
+    key_present: bool
+    configured_chain: List[str]
+    available_models: List[str]
+    last_used_model: Optional[str] = None

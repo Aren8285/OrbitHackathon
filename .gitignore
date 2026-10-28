@@ -14,5 +14,10 @@ out/
 coverage/
 server.log
 backend/server.log
+backend/tmp_e2e_seed_*.db
+backend/tmp_e2e_seed_*.db-wal
+backend/tmp_e2e_seed_*.db-shm
+frontend/playwright-report/
+frontend/test-results/
 *.log
 *.tsbuildinfo

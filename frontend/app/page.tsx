@@ -2,26 +2,27 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Area,
   Bar,
   BarChart,
-  AreaChart,
   CartesianGrid,
   Cell,
+  LabelList,
   ResponsiveContainer,
+  ReferenceLine,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import {
   type AssetRiskRankingRuntime,
-  type FindingRankingRuntime,
   type OptimizerRecommendationRuntime,
   type RiskSummaryRuntime,
   type SimulationResultRuntime,
   api,
   mapApiError,
-} from '@/lib';import CopilotPanel from '@/components/CopilotPanel';
+} from '@/lib';
+import CopilotPanel from '@/components/CopilotPanel';
+import { ACCENT, HAIRLINE, INK_SECONDARY, NEUTRAL_600, SEVERITY_AMBER } from '@/lib/chart-colors';
 import {
   cn,
   formatCurrency,
@@ -32,20 +33,10 @@ import {
 
 type Status = 'loading' | 'ready' | 'empty' | 'error';
 
-/**
- * Demo-scenario asset: FinPay's Payment Processing Database (A-001), the
- * focus asset defined in coder.md. Its simulation comes from the asset's
- * EDITABLE impact assumptions (GET /simulation/assets/A-001) — no baseline
- * zeros are hardcoded here.
- */
-const FOCUS_ASSET_ID = 'A-001';
-
-
 type DashboardData = {
   summary: RiskSummaryRuntime;
   simulation: SimulationResultRuntime;
   optimizer: OptimizerRecommendationRuntime;
-  rankings: FindingRankingRuntime[];
   assets: AssetRiskRankingRuntime[];
 };
 
@@ -64,22 +55,22 @@ type MetricCardProps = {
 
 function MetricCard({ label, value, sub, tone = 'working', icon }: MetricCardProps) {
   const tones: Record<string, string> = {
-    working: 'text-[color:var(--accent)]',
-    risk: 'text-[color:var(--severity-rose)]',
-    warn: 'text-[color:var(--severity-amber)]',
+    working: 'text-[color:var(--ink-primary)]',
+    risk: 'text-[color:var(--ink-primary)]',
+    warn: 'text-[color:var(--ink-primary)]',
     neutral: 'text-[color:var(--ink-primary)]',
     good: 'text-[color:var(--severity-emerald)]',
   };
   return (
-    <div className="risk-panel risk-rise p-5">
+    <div className="kpi-item">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs text-[color:var(--ink-muted)]">{label}</div>
+        <div className="kpi-label">{label}</div>
         {icon && <div className="text-[color:var(--ink-faint)]">{icon}</div>}
       </div>
-      <div className={cn('mt-2.5 text-2xl font-semibold tabular-nums tracking-tight', tones[tone])}>
+      <div className={cn('kpi-value', tones[tone])}>
         {value}
       </div>
-      {sub && <div className="mt-1.5 text-xs text-[color:var(--ink-muted)]">{sub}</div>}
+      {sub && <div className="kpi-detail">{sub}</div>}
     </div>
   );
 }
@@ -97,49 +88,38 @@ function Panel({
 }) {
   return (
     <div className={cn('risk-panel', className)}>
-      <div className="flex items-center justify-between border-b border-[color:var(--hairline)] px-5 py-3">
+      <div className="flex items-center justify-between border-b border-[color:var(--hairline)] px-4 py-3">
         <h2 className="text-sm font-medium text-[color:var(--ink-secondary)]">{title}</h2>
         {action}
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4">{children}</div>
     </div>
   );
-}
-
-/* Single-hue intensity ramp for the risk-by-asset bars: rank implies saturation,
- * never a rainbow palette. */
-function riskBarColor(i: number, n: number): string {
-  const t = n <= 1 ? 0 : i / (n - 1);
-  // azure → desaturated navy: top risks read strongest
-  const r = Math.round(62 - 34 * t);
-  const g = Math.round(139 - 60 * t);
-  const b = Math.round(255 - 90 * t);
-  return `rgb(${r}, ${g}, ${b})`;
 }
 
 export default function ExecutiveDashboard() {
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
 
   const fetchData = useCallback(async () => {
     setStatus('loading');
     setError(null);
     try {
-      const [summary, simulation, optimizer, rankings, assets] = await Promise.all([
-        api.risk.summary(),
-        // GET /simulation/assets/{id} returns the simulation at the ROOT of the
-        // response (unlike POST /simulation/run which wraps it in { simulation }).
-        api.simulation.asset(FOCUS_ASSET_ID),
+      const summary = await api.risk.summary();
+      if (summary.total_assets === 0) {
+        setData(null); setStatus('empty'); return;
+      }
+      const [simulation, optimizer, assets] = await Promise.all([
+        api.simulation.portfolio(),
         api.optimizer.full({
           budget_inr: 5_000_000,
-          asset_id: FOCUS_ASSET_ID,
         }),
-        api.findingRankings.list(true),
         api.risk.assetRankings(),
       ]);
-      setData({ summary, simulation, optimizer, rankings, assets });
-      setStatus('ready');
+      setData({ summary, simulation, optimizer, assets });
+      setStatus(summary.total_assets === 0 ? 'empty' : 'ready');
     } catch (err) {
       setError(mapApiError(err));
       setStatus('error');
@@ -152,27 +132,15 @@ export default function ExecutiveDashboard() {
     void Promise.resolve().then(fetchData);
   }, [fetchData]);
 
-  const lossDistribution = useMemo(() => {
-    if (!data || !data.simulation) return [];
-    const sim = data.simulation;
-    return (
-      [
-        ['P10', sim.p10_inr],
-        ['P25', sim.p25_inr],
-        ['P50', sim.p50_inr],
-        ['P75', sim.p75_inr],
-        ['P90', sim.p90_inr],
-        ['P95', sim.p95_inr],
-        ['P99', sim.p99_inr],
-      ] as Array<[string, number]>
-    ).map(([key, value]) => ({ key, value: value / 100000 }));
-  }, [data]);
+  const lossDistribution = useMemo(() => (data?.simulation.histogram ?? []).map(bin => ({
+    loss: (bin.low_inr + bin.high_inr) / 2 / 100000, count: bin.count,
+  })), [data]);
 
   const topAssets = useMemo(() => {
     if (!data) return [];
     return data.assets
       .slice()
-      .sort((a, b) => b.max_priority - a.max_priority)
+      .sort((a, b) => a.priority_label.localeCompare(b.priority_label) || b.max_priority - a.max_priority)
       .slice(0, 8)
       .map((a) => ({
         name: a.asset_name.length > 14 ? `${a.asset_name.slice(0, 13)}…` : a.asset_name,
@@ -183,7 +151,8 @@ export default function ExecutiveDashboard() {
       }));
   }, [data]);
 
-  const topRisks = useMemo(() => data?.rankings.slice(0, 5) ?? [], [data]);
+  const topRisks = useMemo(() => data?.summary.top_risks.slice(0, 5) ?? [], [data]);
+  const unmodeledRisks = useMemo(() => (data?.summary.unmodeled_risks ?? []).slice(0, 6), [data]);
 
   const beforeAfter = useMemo(() => {
     if (!data) return [];
@@ -199,13 +168,30 @@ export default function ExecutiveDashboard() {
     [data],
   );
 
+  const loadDemo = async () => {
+    setSeeding(true); setError(null);
+    try { await api.demo.seed(); await fetchData(); }
+    catch (err) { setError(mapApiError(err)); setStatus('error'); }
+    finally { setSeeding(false); }
+  };
+  const demoAction = <div className="text-left">
+    <button type="button" disabled={seeding} onClick={() => void loadDemo()}
+      className="rounded border border-[color:var(--hairline-strong)] bg-[color:var(--accent-soft)] px-4 py-2 text-sm text-[color:var(--ink-primary)] disabled:opacity-50">
+      {seeding ? 'Loading FinPay demo...' : 'Load FinPay demo'}
+    </button>
+    {seeding
+      ? <p role="status" aria-live="polite" className="mt-2 flex items-center gap-2 text-xs text-[color:var(--ink-secondary)]"><span aria-hidden="true" className="h-3 w-3 animate-spin rounded-full border border-[color:var(--hairline-strong)] border-t-[color:var(--accent)]" />Loading demo data and calculating risk...</p>
+      : <p className="mt-1 text-xs text-slate-500">Replaces demo data and calculates risk in one step.</p>}
+  </div>;
+
   const refresh = () => fetchData();
 
   if (status === 'loading') {
     return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-6">
+      <div className="mx-auto w-full max-w-[1440px] px-6 py-6">
+        <div className="mb-4">{demoAction}</div>
         <div className="mb-6 h-7 w-64 skeleton" />
-        <div className="mb-6 grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="kpi-strip mb-6">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-28 skeleton" />
           ))}
@@ -222,13 +208,14 @@ export default function ExecutiveDashboard() {
   if (status === 'error') {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 px-4 py-16 text-center">
-        <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-3 text-sm text-rose-200">
+        {demoAction}
+        <div className="rounded-md border border-rose-500/20 bg-rose-500/5 px-4 py-3 text-sm text-rose-200">
           {error}
         </div>
         <button
           type="button"
           onClick={refresh}
-          className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-5 py-2.5 text-sm font-medium text-cyan-200 transition hover:border-cyan-400/50 hover:bg-cyan-500/20"
+          className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-5 py-2.5 text-sm font-medium text-cyan-200 transition hover:border-cyan-400/50 hover:bg-cyan-500/20"
         >
           Retry connection
         </button>
@@ -239,14 +226,14 @@ export default function ExecutiveDashboard() {
   if (status === 'empty' || !data) {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-3 px-4 py-16 text-center">
+        {demoAction}
         <p className="text-sm text-slate-400">
-          No data yet. Seed the FinPay demo data or upload the CSV datasets once the
-          backend is running on localhost:8000.
+          No data yet. Load the FinPay demo to populate the dashboard.
         </p>
         <button
           type="button"
           onClick={refresh}
-          className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-5 py-2.5 text-sm font-medium text-cyan-200 transition hover:border-cyan-400/50 hover:bg-cyan-500/20"
+          className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-5 py-2.5 text-sm font-medium text-cyan-200 transition hover:border-cyan-400/50 hover:bg-cyan-500/20"
         >
           Refresh
         </button>
@@ -259,132 +246,104 @@ export default function ExecutiveDashboard() {
 
   /* Chart dressing shared by every Recharts panel on this page — hairline
    * grid, muted ticks, ledger tooltip. */
-  const chartGrid = '#8b9db729';
+  const chartGrid = HAIRLINE;
   const chartTick = { fill: 'var(--ink-muted)', fontSize: 12 };
   const chartTooltip = {
     background: 'var(--surface-panel)',
     border: '1px solid var(--hairline-strong)',
-    borderRadius: 8,
+    borderRadius: 4,
+    fontFamily: 'var(--font-mono), monospace',
+    fontSize: 12,
     color: 'var(--ink-primary)',
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6">
-      <div className="mb-6 flex items-end justify-between">
+    <div className="mx-auto w-full max-w-[1440px] px-6 py-6">
+      <div className="page-heading">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--ink-primary)]">
-            Executive Dashboard
+            Risk overview
           </h1>
           <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
-            Loss exposure for {sim.asset_id ?? 'the demo scenario'} — editable
-            assumptions, {formatNumber(sim.iterations)} Monte Carlo iterations,
-            seed {sim.seed}.
+            Annual loss across FinPay assets. {formatNumber(sim.iterations)} simulation runs; seed <span className="risk-id">{sim.seed}</span>.
           </p>
         </div>
-        <button
+        <div className="page-actions">{demoAction}<button
           type="button"
           onClick={refresh}
-          className="risk-inset px-3.5 py-2 text-xs text-[color:var(--ink-secondary)] transition hover:text-[color:var(--ink-primary)]"
+          className="risk-inset px-4 py-2 text-sm text-[color:var(--ink-secondary)] hover:text-[color:var(--ink-primary)]"
         >
           Refresh
-        </button>
+        </button></div>
       </div>
 
       {/* metric cards */}
-      <div className="mb-6 grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="kpi-strip mb-6">
         <MetricCard
           label="Expected annual loss"
           value={formatCurrency(sim.expected_annual_loss_inr, {
-            currency: false,
-            compact: false,
+            currency: true,
+            compact: true,
           })}
           sub={`P50 ${formatCurrencyCompact(sim.p50_inr)}`}
           tone="working"
         />
         <MetricCard
           label="P95 annual loss"
-          value={formatCurrency(sim.p95_inr, { currency: false, compact: false })}
+          value={formatCurrency(sim.p95_inr, { currency: true, compact: true })}
           sub={`P99 ${formatCurrencyCompact(sim.p99_inr)}`}
           tone="risk"
         />
         <MetricCard
-          label="Critical assets"
-          value={data.summary.critical_assets.toLocaleString('en-IN')}
+          label="Overall risk score"
+          value={`${(data.summary.overall_risk_score * 100).toFixed(1)}%`}
           sub={`${data.summary.total_assets.toLocaleString('en-IN')} assets total`}
           tone="warn"
         />
         <MetricCard
-          label="Open vulnerabilities"
-          value={data.summary.open_vulnerabilities.toLocaleString('en-IN')}
+          label="Open P0 / P1"
+          value={data.summary.open_p0_p1_count.toLocaleString('en-IN')}
           sub={`${data.summary.kev_vulnerabilities.toLocaleString('en-IN')} on CISA KEV`}
           tone="neutral"
         />
       </div>
 
       {/* charts row */}
-      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+      <div className="mb-6 grid items-start gap-6 lg:grid-cols-[3fr_2fr]">
         <Panel
           title="Financial loss distribution"
           action={
-            <span className="text-[0.65rem] text-slate-500">
-              percentiles in ₹ lakh
+            <span className="text-xs text-slate-500">
+              {sim.histogram.length} bins · loss in ₹ lakh
             </span>
           }
         >
           <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={lossDistribution} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-              <defs>
-                <linearGradient id="lossFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
-                </linearGradient>
-              </defs>
+            <BarChart data={lossDistribution} margin={{ top: 24, right: 8, left: 8, bottom: 8 }}>
               <CartesianGrid stroke={chartGrid} strokeDasharray="3 4" />
-              <XAxis dataKey="key" tick={chartTick} />
-              <YAxis tick={chartTick} tickFormatter={(v: number) => `₹${v}`} />
-              <Tooltip
-                contentStyle={chartTooltip}
-                formatter={(value: number) =>
-                  formatCurrency(value * 100000, { currency: false, compact: true })
-                }
-                labelStyle={{ color: 'var(--ink-secondary)' }}
-              />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="#22d3ee"
-                strokeWidth={2.5}
-                fill="url(#lossFill)"
-              />
-            </AreaChart>
+              <XAxis dataKey="loss" type="number" domain={[(sim.histogram[0]?.low_inr ?? 0)/100000, (sim.histogram[39]?.high_inr ?? 100000)/100000]} tick={chartTick} tickFormatter={value => `${Number(value).toFixed(0)}L`} />
+              <YAxis tick={chartTick} />
+              <Tooltip contentStyle={chartTooltip} labelFormatter={value => formatCurrencyCompact(Number(value) * 100_000)} />
+              <Bar isAnimationActive={false} dataKey="count" fill={ACCENT} />
+              <ReferenceLine x={sim.p50_inr / 100000} label={{value:"P50", position:"top", fill:INK_SECONDARY, fontSize:12, fontFamily:'var(--font-mono), monospace'}} stroke={INK_SECONDARY} strokeDasharray="3 3" />
+              <ReferenceLine x={sim.p95_inr / 100000} label={{value:"P95", position:"top", fill:SEVERITY_AMBER, fontSize:12, fontFamily:'var(--font-mono), monospace'}} stroke={SEVERITY_AMBER} strokeDasharray="3 3" />
+            </BarChart>
           </ResponsiveContainer>
         </Panel>
 
         {/* risk by asset */}
         <Panel
           title="Risk by asset"
-          action={<span className="text-[0.65rem] text-slate-500">priority (0–1)</span>}
+          action={<span className="text-xs text-slate-500">priority (0–1)</span>}
         >
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={topAssets} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-              <CartesianGrid stroke={chartGrid} strokeDasharray="3 4" />
-              <XAxis
-                dataKey="name"
-                tick={{ ...chartTick, fontSize: 11 }}
-                tickFormatter={(label: string) => (String(label).length > 12 ? `${String(label).slice(0, 11)}…` : label)}
-                angle={35}
-                dy={8}
-                height={64}
-                interval={0}
-              />
-              <YAxis tick={chartTick} domain={[0, 1]} />
-              <Tooltip
-                contentStyle={chartTooltip}
-              />
-              <Bar dataKey="priority" radius={[3, 3, 0, 0]}>
-                {topAssets.map((a, i) => (
-                  <Cell key={a.asset_id} fill={riskBarColor(i, topAssets.length)} />
-                ))}
+            <BarChart data={topAssets} layout="vertical" margin={{ top: 8, right: 40, left: 0, bottom: 8 }}>
+              <CartesianGrid stroke={chartGrid} strokeDasharray="3 4" horizontal={false} />
+              <XAxis type="number" tick={chartTick} domain={[0, 1]} />
+              <YAxis dataKey="name" type="category" tick={{ ...chartTick, fontSize: 12 }} width={112} tickLine={false} />
+              <Tooltip contentStyle={chartTooltip} />
+              <Bar dataKey="priority" fill="var(--accent)" radius={0} isAnimationActive={false}>
+                <LabelList dataKey="priority" position="right" formatter={(value: unknown) => Number(value).toFixed(2)} fill={INK_SECONDARY} fontSize={12} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -392,20 +351,20 @@ export default function ExecutiveDashboard() {
       </div>
 
       {/* before/after + top risks */}
-      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+      <div className="mb-6 grid items-start gap-6 lg:grid-cols-[2fr_3fr]">
         <Panel
           title="Before vs after remediation"
           action={
-            <span className="text-[0.65rem] text-slate-500">
-              asset {optim.asset_id} · ₹{formatCurrencyCompact(optim.budget_inr)} budget
+            <span className="text-xs text-slate-500">
+              portfolio · {formatCurrencyCompact(optim.budget_inr)} budget
             </span>
           }
         >
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={beforeAfter} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+            <BarChart data={beforeAfter} margin={{ top: 24, right: 8, left: 8, bottom: 8 }}>
               <CartesianGrid stroke={chartGrid} strokeDasharray="3 4" />
               <XAxis dataKey="phase" tick={chartTick} />
-              <YAxis tick={chartTick} tickFormatter={(v: number) => `₹${v}`} />
+              <YAxis tick={chartTick} tickFormatter={(v: number) => `${v}L`} />
               <Tooltip
                 contentStyle={chartTooltip}
                 formatter={(value: number) =>
@@ -413,13 +372,14 @@ export default function ExecutiveDashboard() {
                 }
                 labelStyle={{ color: 'var(--ink-secondary)' }}
               />
-              <Bar dataKey="residual" radius={[4, 4, 0, 0]}>
-                <Cell fill="#fb7185" />
-                <Cell fill="#34d399" />
+              <Bar isAnimationActive={false} dataKey="residual" radius={[4, 4, 0, 0]}>
+                <Cell fill={NEUTRAL_600} />
+                <Cell fill={ACCENT} />
+                <LabelList dataKey="residual" position="top" formatter={(value: unknown) => formatCurrencyCompact(Number(value) * 100000)} fill={INK_SECONDARY} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-          <div className="mt-2 text-center text-[0.7rem] text-slate-500">
+          <div className="mt-2 text-xs text-slate-500">
             Residual loss reduction:{' '}
             <span className="text-emerald-200">
               {formatCurrencyCompact(optim.total_expected_reduction_inr)}
@@ -431,8 +391,8 @@ export default function ExecutiveDashboard() {
         <Panel
           title="Top 5 risks"
           action={
-            <span className="text-[0.65rem] text-slate-500">
-              by impact × exposure
+            <span className="text-xs text-slate-500">
+              Priority order
             </span>
           }
         >
@@ -441,47 +401,47 @@ export default function ExecutiveDashboard() {
               No open findings to rank.
             </div>
           ) : (
-            <div className="space-y-2">
-              {topRisks.map((r, i) => (
-                <div
-                  key={`${r.cve_id}-${r.asset_id}`}
-                  className="flex items-start gap-3 rounded-lg border border-slate-700/30 bg-slate-800/30 px-3 py-2"
-                >
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-blue-400/20 bg-gradient-to-br from-blue-500/20 to-cyan-500/10 text-[0.65rem] font-bold text-cyan-300">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-slate-200">{r.title}</div>
-                    <div className="mt-0.5 flex items-center gap-1.5 font-mono text-[0.7rem] text-slate-500">
-                      <span>{r.cve_id}</span>
-                      <span className="text-slate-700">·</span>
-                      <span className="font-sans">{r.asset_name}</span>
-                    </div>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    {r.is_kev && (
-                      <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[0.6rem] font-medium text-rose-300">
-                        <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-                        KEV
-                      </span>
-                    )}
-                    <div className={cn('text-sm font-semibold tabular-nums', priorityColor(r.priority))}>
-                      {r.priority.toFixed(3)}
-                    </div>
-                    <div className="text-[0.6rem] text-slate-500">priority</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <div className="table-scroll"><table>
+              <thead><tr><th>Asset</th><th>Priority</th><th className="numeric">Expected loss</th><th className="numeric">P95</th></tr></thead>
+              <tbody>{topRisks.map((r) => <tr key={r.asset_id}>
+                <td><div className="text-sm font-medium">{r.asset_name}</div><div className="risk-id mt-1 text-slate-400">{r.asset_id}</div>{r.coverage === 'none' && <div className="mt-1 text-xs text-slate-500">{r.coverage_reason}</div>}</td>
+                <td><span className={priorityColor(r.priority_label)}>{r.priority_label}</span></td>
+                <td className="numeric money">{r.expected_annual_loss_inr == null ? '—' : formatCurrencyCompact(r.expected_annual_loss_inr)}</td>
+                <td className="numeric money">{r.p95_inr == null ? '—' : formatCurrencyCompact(r.p95_inr)}</td>
+              </tr>)}</tbody>
+            </table></div>
           )}
         </Panel>
+
+        {unmodeledRisks.length > 0 && (
+          <Panel
+            title="Not modelled"
+            action={
+              <span className="text-xs text-slate-500">
+                linked risk scenarios missing
+              </span>
+            }
+          >
+            <ul className="divide-y divide-[color:var(--hairline)]">
+              {unmodeledRisks.map((r) => (
+                <li key={r.asset_id} className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <div className="text-sm text-[color:var(--ink-secondary)]">{r.asset_name}</div>
+                    <div className="risk-id text-slate-400">{r.asset_id} · {r.reason ?? 'no modeled loss'}</div>
+                  </div>
+                  <span className={priorityColor(r.priority_label)}>{r.priority_label}</span>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        )}
       </div>
 
       <Panel
         title="Recommended controls"
         action={
-          <span className="text-[0.65rem] text-slate-500">
-            never exceeds ₹{formatCurrencyCompact(optim.budget_inr)} budget
+          <span className="text-xs text-slate-500">
+            never exceeds {formatCurrencyCompact(optim.budget_inr)} budget
           </span>
         }
       >
@@ -490,57 +450,16 @@ export default function ExecutiveDashboard() {
             No controls fit within the current budget.
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {recommended.map((c, i) => (
-              <div
-                key={c.control_key}
-                className="rounded-xl border border-slate-700/40 bg-slate-800/40 p-4 transition hover:border-cyan-500/30"
-              >
-                <div className="flex items-baseline justify-between">
-                  <h3 className="font-mono text-sm font-semibold text-cyan-200">
-                    {c.control_key}
-                  </h3>
-                  <span className="text-[0.65rem] text-slate-500">#{i + 1}</span>
-                </div>
-                <div className="mt-1 flex items-center gap-2 text-sm text-slate-300">
-                  {c.control_name}
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-[0.7rem]">
-                  <div>
-                    <div className="text-slate-500">Cost/yr</div>
-                    <div className="font-semibold tabular-nums text-slate-200">
-                      {formatCurrencyCompact(c.annual_cost_inr)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-slate-500">Benefit/₹</div>
-                    <div className="font-semibold tabular-nums text-emerald-200">
-                      {c.benefit_per_rupee != null ? (
-                        c.benefit_per_rupee.toFixed(2)
-                      ) : (
-                        '—'
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-slate-500">Residual after</div>
-                    <div className="font-semibold tabular-nums text-rose-200">
-                      {formatCurrencyCompact(c.residual_after_inr)}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-700/60">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyan-500/80 to-blue-500/80 transition-all duration-500"
-                    style={{ width: `${Math.min(100, c.effectiveness * 100)}%` }}
-                  />
-                </div>
-                <div className="mt-1 text-[0.6rem] text-slate-600">
-                  effectiveness {Math.round(c.effectiveness * 100)}%
-                </div>
-              </div>
-            ))}
-          </div>
+          <div className="table-scroll"><table>
+            <thead><tr><th>Control</th><th className="numeric">Annual cost</th><th className="numeric">Benefit / rupee</th><th className="numeric">Loss after</th><th className="numeric">Effectiveness</th></tr></thead>
+            <tbody>{recommended.map((c) => <tr key={c.control_key}>
+              <td><div>{c.control_name}</div><div className="risk-id text-slate-400">{c.control_key}</div></td>
+              <td className="numeric">{formatCurrencyCompact(c.annual_cost_inr)}</td>
+              <td className="numeric">{c.benefit_per_rupee != null ? c.benefit_per_rupee.toFixed(2) : '—'}</td>
+              <td className="numeric">{formatCurrencyCompact(c.residual_after_inr)}</td>
+              <td className="numeric">{Math.round(c.effectiveness * 100)}%</td>
+            </tr>)}</tbody>
+          </table></div>
         )}
       </Panel>
 

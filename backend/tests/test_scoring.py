@@ -29,18 +29,18 @@ def test_payment_processing_database_criticality_is_096():
 
 def test_criticality_uses_documented_weights():
     # revenue 1-10 scale contributes 0.35 * value/10, etc.
-    assert math.isclose(compute_criticality(10, 'Internal', 1, 1), 0.35 + 0.25 * 0.4 + 0.2 * 0.1 + 0.2 * 0.1)
+    assert math.isclose(compute_criticality(10, 'Internal', 1, 1), 0.35 + 0.25 * 0.5 + 0.2 * 0.1 + 0.2 * 0.1)
     lowest = compute_criticality(1, 'Public', 1, 1)
-    assert math.isclose(lowest, 0.35 * 0.1 + 0.25 * 0.1 + 0.2 * 0.1 + 0.2 * 0.1)
+    assert math.isclose(lowest, 0.35 * 0.1 + 0.25 * 0.2 + 0.2 * 0.1 + 0.2 * 0.1)
     assert 0 < lowest <= 1
 
 
 def test_data_sensitivity_mapping_is_documented_and_case_insensitive():
     assert data_sensitivity_score('Restricted') == 1.0
-    assert data_sensitivity_score('CONFIDENTIAL') == 0.7
-    assert data_sensitivity_score('internal') == 0.4
-    assert data_sensitivity_score('public') == 0.1
-    assert data_sensitivity_score('Something-New') == 0.4  # unknown -> Internal -> 0.4
+    assert data_sensitivity_score('CONFIDENTIAL') == 0.8
+    assert data_sensitivity_score('internal') == 0.5
+    assert data_sensitivity_score('public') == 0.2
+    assert data_sensitivity_score('Something-New') == 0.5  # unknown -> Internal -> 0.4
 
 
 # ---------------------------------------------------------------- exposure
@@ -105,7 +105,7 @@ def test_scale_tento():
     assert math.isclose(scale_tento(10), 1.0)
     assert math.isclose(scale_tento(5), 0.5)
     assert scale_tento(0) == 0.0
-    assert scale_tento('junk') == 0.4  # unknown 1-10 input -> Internal default
+    assert scale_tento('junk') == 0.5  # unknown 1-10 input -> Internal default
 
 
 # ---------------------------------------------------------------- controls & residual (must-pass checks)

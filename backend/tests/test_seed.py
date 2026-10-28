@@ -13,13 +13,17 @@ def _counts(db):
             ('assets', models.Asset),
             ('vulnerabilities', models.Vulnerability),
             ('controls', models.Control),
+            ('risk_scenarios', models.RiskScenario),
+            ('simulation_results', models.SimulationResult),
+            ('remediation_tasks', models.RemediationTask),
+            ('impact_assumptions', models.ImpactAssumption),
         )
     }
 
 
 def test_seed_imports_all_three_datasets(db):
     reports = seed_database(db)
-    assert set(reports) == {'assets', 'vulnerabilities', 'controls'}
+    assert set(reports) == {'assets', 'vulnerabilities', 'controls', 'risk_scenarios', 'remediations'}
     assert reports['assets'].created == 60
     # exact row counts come from the demo CSVs
     counts = _counts(db)

@@ -18,7 +18,7 @@ def _seed(db: Session):
 
 def test_summary_is_derived_from_seeded_database(db, client):
     _seed(db)
-    body = client.get('/risk/summary').json()
+    body = client.get('/api/risk/summary').json()
     assert body['total_assets'] == 60
     assert body['total_vulnerabilities'] == 186
     expected_open = db.query(models.Vulnerability).filter_by(status='open').count()
@@ -31,11 +31,69 @@ def test_summary_is_derived_from_seeded_database(db, client):
     )
     assert body['assumed_exposure_inr'] == expected_exposure
     assert 'assumption' in body['financial_note'].lower()
+    # top_risks holds only modeled entries; fewer than 5 is fine
+    assert len(body['top_risks']) <= 5
+    assert all(row['expected_annual_loss_inr'] is not None and row['p95_inr'] is not None
+               for row in body['top_risks'])
+    assert all(row['coverage'] == 'linked' for row in body['top_risks'])
+    # anything without a modeled loss is listed separately, never with nulls
+    unmodeled = body['unmodeled_risks']
+    assert len(unmodeled) == body['total_assets'] - len(body['top_risks'])
+    assert all({'asset_id', 'asset_name', 'priority_label', 'reason'} <= row.keys() for row in unmodeled)
+    ids_modeled = {row['asset_id'] for row in body['top_risks']}
+    assert not ids_modeled & {row['asset_id'] for row in unmodeled}
+
+
+def test_summary_top_risks_excludes_unmodeled_and_lists_them_separately(client):
+    seeded = client.post('/api/demo/seed')
+    assert seeded.status_code == 200
+    body = client.get('/api/risk/summary').json()
+    A004 = 'A-004'
+    modeled_ids = {row['asset_id'] for row in body['top_risks']}
+    assert A004 not in modeled_ids  # coverage 'none' must never enter top_risks
+    assert any(row['asset_id'] == A004 for row in body['unmodeled_risks'])
+    for row in body.get('top_risks', []):
+        assert row['coverage'] == 'linked'
+        assert row['expected_annual_loss_inr'] is not None
+        assert row['p95_inr'] is not None
+    assets_list = client.get('/api/risk/assets').json()
+    expected_modeled = {a['asset_id'] for a in assets_list if a['coverage'] == 'linked'}
+    top_ids = {row['asset_id'] for row in body['top_risks']}
+    assert top_ids <= expected_modeled
+    unmodeled_ids = {row['asset_id'] for row in body['unmodeled_risks']}
+    assert not (top_ids & unmodeled_ids)
+    if expected_modeled - top_ids:
+        unmodeled_not_all = expected_modeled & unmodeled_ids
+        assert not unmodeled_not_all
+
+
+def test_payment_asset_detail_includes_same_scenario_loss_range(client):
+    seeded = client.post('/api/demo/seed')
+    assert seeded.status_code == 200
+    asset = client.get('/api/assets/A-001').json()
+    assert asset['coverage'] == 'linked'
+    assert asset['expected_annual_loss_inr'] > 0
+    assert 0 <= asset['p50_inr'] <= asset['p95_inr']
+    assert len(asset['scenario_losses']) == 1
+    assert asset['scenario_losses'][0]['scenario_key'] == 'ransomware'
+    listed = next(row for row in client.get('/api/risk/assets').json() if row['asset_id'] == 'A-001')
+    assert listed['p50_inr'] == asset['p50_inr'] and listed['p95_inr'] == asset['p95_inr']
+
+
+def test_asset_without_scenario_has_explicit_coverage_and_optimizer_warning(client):
+    assert client.post('/api/demo/seed').status_code == 200
+    asset = client.get('/api/assets/A-004').json()
+    assert asset['coverage'] == 'none'
+    assert asset['coverage_reason'] == 'No risk scenario is linked to this asset'
+    assert asset['expected_annual_loss_inr'] is None
+    response = client.get('/api/optimizer/recommend?asset_id=A-004&budget=1000000')
+    assert response.status_code == 200
+    assert response.json()['warning'] == asset['coverage_reason']
 
 
 def test_payment_db_finding_row_is_scored_correctly(db, client):
     _seed(db)
-    rows = client.get('/risk/rankings').json()
+    rows = client.get('/api/risk/rankings').json()
     target = next(
         r for r in rows if r['asset_id'] == 'A-001' and r['cve_id'] == 'CVE-2099-0001'
     )
@@ -51,7 +109,7 @@ def test_payment_db_finding_row_is_scored_correctly(db, client):
 
 def test_rankings_sorted_by_priority_descending(db, client):
     _seed(db)
-    rows = client.get('/risk/rankings').json()
+    rows = client.get('/api/risk/rankings').json()
     assert len(rows) > 50  # whole demo dataset, open findings only
     priorities = [r['priority'] for r in rows]
     assert priorities == sorted(priorities, reverse=True)
@@ -62,14 +120,14 @@ def test_open_only_filter(db, client):
     _seed(db)
     closed_total = db.query(models.Vulnerability).filter(models.Vulnerability.status != 'open').count()
     assert closed_total > 0
-    open_rows = client.get('/risk/rankings').json()
-    all_rows = client.get('/risk/rankings?open_only=false').json()
+    open_rows = client.get('/api/risk/rankings').json()
+    all_rows = client.get('/api/risk/rankings?open_only=false').json()
     assert len(all_rows) == len(open_rows) + closed_total
 
 
 def test_asset_rankings_are_db_derived_and_descending(db, client):
     _seed(db)
-    rows = client.get('/risk/assets').json()
+    rows = client.get('/api/risk/assets').json()
     assert len(rows) == 60
     priorities = [r['max_priority'] for r in rows]
     assert priorities == sorted(priorities, reverse=True)
@@ -81,19 +139,19 @@ def test_asset_rankings_are_db_derived_and_descending(db, client):
 
 def test_impact_assumption_defaults_are_visible_and_labeled(db, client):
     _seed(db)
-    body = client.get('/assumptions/impact/A-001').json()
+    body = client.get('/api/assumptions/impact/A-001').json()
     assert body['is_assumption'] is True
     assert body['basis'] == 'default'
     assert body['assumed_impact_inr'] == 9_600_000
     assert body['default_impact_inr'] == 9_600_000
-    listing = client.get('/assumptions/impact').json()
+    listing = client.get('/api/assumptions/impact').json()
     assert len(listing) == 60
     assert all(i['is_assumption'] for i in listing)
 
 
 def test_impact_assumption_edit_propagates_into_rankings(db, client):
     _seed(db)
-    updated = client.put('/assumptions/impact/A-001', json={'assumed_impact_inr': 50_000_000})
+    updated = client.put('/api/assumptions/impact/A-001', json={'assumed_impact_inr': 50_000_000})
     assert updated.status_code == 200, updated.text
     body = updated.json()
     assert body['basis'] == 'edited'
@@ -101,7 +159,7 @@ def test_impact_assumption_edit_propagates_into_rankings(db, client):
     assert body['default_impact_inr'] == 9_600_000  # documented default stays visible
 
     target = next(
-        r for r in client.get('/risk/rankings').json()
+        r for r in client.get('/api/risk/rankings').json()
         if r['asset_id'] == 'A-001' and r['cve_id'] == 'CVE-2099-0001'
     )
     assert math.isclose(target['financial_impact'], 1.0, abs_tol=1e-9)  # 50M > 1 crore reference, capped
@@ -110,17 +168,17 @@ def test_impact_assumption_edit_propagates_into_rankings(db, client):
 
 def test_negative_or_missing_assets_are_rejected(db, client):
     _seed(db)
-    response = client.put('/assumptions/impact/A-001', json={'assumed_impact_inr': -10})
+    response = client.put('/api/assumptions/impact/A-001', json={'assumed_impact_inr': -10})
     assert response.status_code == 422
-    response = client.put('/assumptions/impact/A-999', json={'assumed_impact_inr': 10_000})
+    response = client.put('/api/assumptions/impact/A-999', json={'assumed_impact_inr': 10_000})
     assert response.status_code == 404
-    response = client.get('/assumptions/impact/A-999')
+    response = client.get('/api/assumptions/impact/A-999')
     assert response.status_code == 404
 
 
 def test_summary_reflects_edited_assumption(db, client):
     _seed(db)
-    before = client.get('/risk/summary').json()['assumed_exposure_inr']
-    client.put('/assumptions/impact/A-001', json={'assumed_impact_inr': 50_000_000})
-    after = client.get('/risk/summary').json()['assumed_exposure_inr']
+    before = client.get('/api/risk/summary').json()['assumed_exposure_inr']
+    client.put('/api/assumptions/impact/A-001', json={'assumed_impact_inr': 50_000_000})
+    after = client.get('/api/risk/summary').json()['assumed_exposure_inr']
     assert after == before - 9_600_000 + 50_000_000

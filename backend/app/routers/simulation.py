@@ -11,9 +11,19 @@ router = APIRouter()
 
 
 @router.post('/run', response_model=schemas.SimulationResult)
-def run_simulation(request: schemas.SimulationRequest):
+def run_simulation(request: schemas.SimulationRequest, db: Session = Depends(get_db)):
     """Simulate annual INR loss from fully explicit, user-supplied inputs."""
     try:
+        if request.scenario_key:
+            from app.services import scenario_engine
+            scenarios, controls, raw = scenario_engine.context(db, seed=request.seed, iterations=request.iterations)
+            scenarios = [row for row in scenarios if row.scenario_key == request.scenario_key]
+            if not scenarios:
+                raise HTTPException(status_code=404, detail='Scenario not found')
+            result = scenario_engine.evaluate(scenarios, controls, raw, seed=request.seed, iterations=request.iterations)
+            scenario_engine.persist(db, result)
+            db.commit()
+            return result
         return simulation_service.run_from_request(request.model_dump())
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -35,3 +45,9 @@ def simulate_asset(
         return simulation_service.run_for_asset(db, asset, seed=seed, iterations=iterations)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get('/portfolio', response_model=schemas.SimulationResult)
+def simulate_portfolio(db: Session = Depends(get_db)):
+    from app.services.scenario_engine import portfolio
+    return portfolio(db)

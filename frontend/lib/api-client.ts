@@ -3,7 +3,7 @@
  *
  * Each top-level module mirrors a backend router prefix and is typed against
  * the server's OpenAPI schema. Requests use `fetch` with a single origin
- * (`NEXT_PUBLIC_API_URL`, default `http://localhost:8000`).
+ * (same-origin `/api` server proxy).
  *
  * Paths are versioned implicitly by the backend (they include the resource
  * name, e.g. `/assets`). Do not introduce ad-hoc path constants here — add a
@@ -40,6 +40,9 @@ import {
 
 /** Runtime shape of the server's risk summary (no hardcoded values). */
 export type RiskSummaryRuntime = {
+  overall_risk_score: number;
+  open_p0_p1_count: number;
+  expected_annual_loss_inr: number;
   total_assets: number;
   critical_assets: number;
   open_vulnerabilities: number;
@@ -47,10 +50,14 @@ export type RiskSummaryRuntime = {
   kev_vulnerabilities: number;
   assumed_exposure_inr: number;
   financial_note: string;
+  top_risks: Array<{asset_id: string; asset_name: string; priority_label: 'P0' | 'P1' | 'P2' | 'P3'; expected_annual_loss_inr: number | null; p50_inr: number | null; p95_inr: number | null; coverage: 'linked' | 'none'; coverage_reason: string | null}>;
+  unmodeled_risks: Array<{asset_id: string; asset_name: string; priority_label: 'P0' | 'P1' | 'P2' | 'P3'; coverage: 'linked' | 'none'; reason: string | null}>;
 };
 
 /** Runtime shape for the /simulation/run response. */
 export type SimulationResultRuntime = {
+  mean: number;
+  histogram: Array<{low_inr: number; high_inr: number; count: number}>;
   distribution: string;
   expected_annual_loss_inr: number;
   p50_inr: number;
@@ -87,6 +94,12 @@ export type ControlRecommendationRuntime = {
 };
 
 export type OptimizerRecommendationRuntime = {
+  selected_controls: string[];
+  total_cost: number;
+  expected_loss_before: number;
+  expected_loss_after: number;
+  percent_reduction: number;
+  roi: number | null;
   budget_inr: number;
   spent_inr: number;
   remaining_budget_inr: number;
@@ -99,6 +112,7 @@ export type OptimizerRecommendationRuntime = {
   recommended_controls: Array<ControlRecommendationRuntime>;
   never_exceeded_budget: boolean;
   asset_id: string;
+  warning?: string | null;
   assumptions: Record<string, unknown>;
 };
 
@@ -130,7 +144,7 @@ export type RemediationPlanItemRuntime = {
   };
 };
 
-/** Runtime shape for /remediation/plan. */
+/** Runtime shape for /remediations/plan. */
 export type RemediationPlanRuntime = {
   plan: Array<RemediationPlanItemRuntime>;
   total_cost: number;
@@ -184,7 +198,7 @@ export const controls = {
 
   // cost/category lookup used by the remediation UI
   cost: async (): Promise<Array<ControlCostRuntime>> => {
-    return apiFetch<Array<ControlCostRuntime>>('/remediation/costs');
+    return apiFetch<Array<ControlCostRuntime>>('/remediations/costs');
   },
 };
 
@@ -247,6 +261,7 @@ export const health = {
 // ---------------------------------------------------------------------------
 
 export const risk = {
+  calculate: () => apiFetch<RiskSummaryRuntime>('/risk/calculate', {method: 'POST'}),
   summary: async (): Promise<RiskSummaryRuntime> => {
     return apiFetch<RiskSummaryRuntime>('/risk/summary');
   },
@@ -289,6 +304,7 @@ export const assumptions = {
 // ---------------------------------------------------------------------------
 
 export const simulation = {
+  portfolio: (): Promise<SimulationResultRuntime> => apiFetch<SimulationResultRuntime>('/simulation/portfolio'),
   run: async (
     payload: SimulationRequestRuntime,
   ): Promise<SimulationResultRuntime> => {
@@ -318,14 +334,11 @@ export const optimizer = {
   recommendations: async (
     payload: OptimizerRecommendationRequestRuntime,
   ): Promise<OptimizerRecommendationRuntime> => {
-    const q = new URLSearchParams();
-    q.set('budget', String(payload.budget_inr));
-    if (payload.asset_id) {
-      q.set('asset_id', payload.asset_id);
-    }
-    return apiFetch<OptimizerRecommendationRuntime>(
-      `/optimizer/recommendations?${q.toString()}`,
-    );
+    return apiFetch<OptimizerRecommendationRuntime>('/optimizer/recommend', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ budget: payload.budget_inr, must_include: payload.must_include ?? [],
+                             exclude: payload.exclude ?? [], asset_id: payload.asset_id }),
+    });
   },
 };
 
@@ -339,7 +352,7 @@ export type AiExplanationRuntime = AiExplainResponseRuntime;
  * user-supplied body, numbers always come from the server engines. */
 export const ai = {
   explain: async (): Promise<AiExplainResponseRuntime> => {
-    return apiFetch<AiExplainResponseRuntime>('/ai/explain');
+    return apiFetch<AiExplainResponseRuntime>('/ai/explain-risk');
   },
 };
 
@@ -349,33 +362,35 @@ export const ai = {
 
 export const remediation = {
   plan: async (): Promise<RemediationPlanRuntime> => {
-    return apiFetch<RemediationPlanRuntime>('/remediation/plan');
+    return apiFetch<RemediationPlanRuntime>('/remediations/plan');
   },
 
   costs: async (): Promise<Array<ControlCostRuntime>> => {
-    return apiFetch<Array<ControlCostRuntime>>('/remediation/costs');
+    return apiFetch<Array<ControlCostRuntime>>('/remediations/costs');
   },
 
   tasks: async (): Promise<Array<RemediationTaskRuntime>> => {
-    return apiFetch<Array<RemediationTaskRuntime>>('/remediation/tasks');
+    return apiFetch<Array<RemediationTaskRuntime>>('/remediations/tasks');
   },
 
   updateTask: async (
     controlKey: string,
     status: RemediationTaskStatus,
+    coverage?: number,
+    taskId?: number | null,
   ): Promise<RemediationTaskRuntime> => {
     return apiFetch<RemediationTaskRuntime>(
-      `/remediation/tasks/${controlKey}`,
+      `/remediations/tasks/${controlKey}${taskId ? `?task_id=${taskId}` : ''}`,
       {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, coverage }),
       },
     );
   },
 
   impact: async (): Promise<RemediationImpactRuntime> => {
-    return apiFetch<RemediationImpactRuntime>('/remediation/impact');
+    return apiFetch<RemediationImpactRuntime>('/remediations/impact');
   },
 };
 
@@ -384,3 +399,8 @@ export const remediation = {
 // ---------------------------------------------------------------------------
 
 export { mapApiError, type ApiErrorPayload } from './api-client-error';
+
+
+export const demo = {
+  seed: () => apiFetch<{rebuilt: boolean; counts: Record<string, number>}>('/demo/seed', {method:'POST'}),
+};

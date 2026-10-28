@@ -11,6 +11,13 @@
 // ---------------------------------------------------------------------------
 
 export interface AssetRuntime {
+  priority_label?: 'P0' | 'P1' | 'P2' | 'P3';
+  coverage?: 'linked' | 'none';
+  coverage_reason?: string | null;
+  expected_annual_loss_inr?: number | null;
+  p50_inr?: number | null;
+  p95_inr?: number | null;
+  scenario_losses?: Array<{scenario_key: string; scenario_name: string; expected_annual_loss_inr: number; p50_inr: number; p95_inr: number}>;
   asset_id: string;
   asset_name: string;
   asset_type: string;
@@ -59,6 +66,7 @@ export interface ControlCostRuntime {
 // ---------------------------------------------------------------------------
 
 export interface VulnerabilityRuntime {
+  priority_label: 'P0' | 'P1' | 'P2' | 'P3';
   asset_id: string;
   cve_id: string;
   title: string;
@@ -92,6 +100,7 @@ export interface FindingSummaryRuntime {
 }
 
 export interface FindingRankingRuntime {
+  priority_label: 'P0' | 'P1' | 'P2' | 'P3';
   asset_id: string;
   asset_name: string;
   cve_id: string;
@@ -117,6 +126,7 @@ export interface FindingRankingRuntime {
 // ---------------------------------------------------------------------------
 
 export interface AssetRiskRankingRuntime {
+  priority_label: 'P0' | 'P1' | 'P2' | 'P3';
   asset_id: string;
   asset_name: string;
   criticality: number;
@@ -126,9 +136,18 @@ export interface AssetRiskRankingRuntime {
   max_technical_risk: number;
   max_priority: number;
   assumed_impact_inr: number;
+  coverage: 'linked' | 'none';
+  coverage_reason: string | null;
+  expected_annual_loss_inr: number | null;
+  p50_inr: number | null;
+  p95_inr: number | null;
+  scenario_losses: Array<{scenario_key: string; scenario_name: string; expected_annual_loss_inr: number; p50_inr: number; p95_inr: number}>;
 }
 
 export interface RiskSummaryRuntime {
+  overall_risk_score: number;
+  open_p0_p1_count: number;
+  expected_annual_loss_inr: number;
   total_assets: number;
   critical_assets: number;
   open_vulnerabilities: number;
@@ -136,6 +155,8 @@ export interface RiskSummaryRuntime {
   kev_vulnerabilities: number;
   assumed_exposure_inr: number;
   financial_note: string;
+  top_risks: Array<{asset_id: string; asset_name: string; priority_label: 'P0' | 'P1' | 'P2' | 'P3'; expected_annual_loss_inr: number | null; p50_inr: number | null; p95_inr: number | null; coverage: 'linked' | 'none'; coverage_reason: string | null}>;
+  unmodeled_risks: Array<{asset_id: string; asset_name: string; priority_label: 'P0' | 'P1' | 'P2' | 'P3'; coverage: 'linked' | 'none'; reason: string | null}>;
 }
 
 // ---------------------------------------------------------------------------
@@ -179,6 +200,8 @@ export interface SimulationRequestRuntime {
 }
 
 export interface SimulationResultRuntime {
+  mean: number;
+  histogram: Array<{low_inr: number; high_inr: number; count: number}>;
   distribution: string;
   iterations: number;
   seed: number;
@@ -225,6 +248,12 @@ export interface ControlRecommendationRuntime {
 }
 
 export interface OptimizerRecommendationRuntime {
+  selected_controls: string[];
+  total_cost: number;
+  expected_loss_before: number;
+  expected_loss_after: number;
+  percent_reduction: number;
+  roi: number | null;
   budget_inr: number;
   spent_inr: number;
   remaining_budget_inr: number;
@@ -237,11 +266,14 @@ export interface OptimizerRecommendationRuntime {
   recommended_controls: Array<ControlRecommendationRuntime>;
   never_exceeded_budget: boolean;
   asset_id: string;
+  warning?: string | null;
   assumptions: Record<string, unknown>;
 }
 
 export type OptimizerRecommendationRequestRuntime = {
   budget_inr: number;
+  must_include?: string[];
+  exclude?: string[];
   asset_id?: string;
 };
 
@@ -254,9 +286,17 @@ export interface RemediationPlanRuntime {
   total_cost: number;
 }
 
-export type RemediationTaskStatus = 'planned' | 'completed' | 'verified';
+export type RemediationTaskStatus = 'open' | 'in_progress' | 'completed' | 'verified';
 
 export interface RemediationTaskRuntime {
+  id: number | null;
+  coverage: number;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  asset_id: string;
+  vulnerability_id: number | null;
+  estimated_risk_reduction: number;
+  due_date: string;
+  owner: string;
   control_key: string;
   control_name: string;
   category: string;
@@ -279,7 +319,7 @@ export interface RemediationLossRangeRuntime {
 
 export interface RemediationImpactRuntime {
   asset_id: string;
-  status_counts: Record<'planned' | 'completed' | 'verified', number>;
+  status_counts: Record<'open' | 'in_progress' | 'completed' | 'verified', number>;
   verified_controls: Array<string>;
   combined_effectiveness: number;
   excluded_completed_effectiveness: number;
@@ -333,7 +373,7 @@ export interface CopilotMetricsRuntime {
 export interface AiExplainResponseRuntime {
   explanation: string;
   source: 'llm' | 'fallback' | string;
-  model: string | null;
+  model: string;
   fallback_reason: string | null;
   metrics: CopilotMetricsRuntime;
   disclaimer: string;

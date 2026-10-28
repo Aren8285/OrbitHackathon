@@ -76,6 +76,7 @@ export type {
 export type { AiExplanationRuntime } from './api-client';
 
 import {
+  demo as _demoMod,
   ai as _aiMod,
   assets as _assetsMod,
   assumptions as _assumptionsMod,
@@ -152,6 +153,7 @@ export type PlanItem = Omit<RemediationPlanItemRuntime, 'control'> & {
 // ---------------------------------------------------------------------------
 
 export const api: {
+  demo: { seed: () => Promise<{rebuilt: boolean; counts: Record<string, number>}> };
   health: { get: () => Promise<HealthStatus> };
   assets: {
     list: (limit?: number) => Promise<import('./api-client-types').AssetRuntime[]>;
@@ -165,6 +167,7 @@ export const api: {
     list: () => Promise<import('./api-client-types').VulnerabilityRuntime[]>;
   };
   risk: {
+    calculate: () => Promise<import('./api-client-types').RiskSummaryRuntime>;
     summary: () => Promise<import('./api-client-types').RiskSummaryRuntime>;
     assetRankings: () => Promise<Array<import('./api-client-types').AssetRiskRankingRuntime>>;
   };
@@ -180,6 +183,7 @@ export const api: {
     ) => Promise<import('./api-client-types').ImpactAssumptionRuntime>;
   };
   simulation: {
+    portfolio: () => Promise<import('./api-client-types').SimulationResultRuntime>;
     run: (
       payload: SimulationRequest,
     ) => Promise<import('./api-client-types').SimulationResultRuntime>;
@@ -199,6 +203,8 @@ export const api: {
     updateTask: (
       controlKey: string,
       status: import('./api-client-types').RemediationTaskStatus,
+      coverage?: number,
+      taskId?: number | null,
     ) => Promise<import('./api-client-types').RemediationTaskRuntime>;
     impact: () => Promise<import('./api-client-types').RemediationImpactRuntime>;
   };
@@ -206,6 +212,7 @@ export const api: {
     explain: () => Promise<import('./api-client-types').AiExplainResponseRuntime>;
   };
 } = {
+  demo: { seed: () => _demoMod.seed() },
   health: {
     get: () => _healthMod.get(),
   },
@@ -221,6 +228,7 @@ export const api: {
     list: () => _vulnsMod.list(),
   },
   risk: {
+    calculate: () => _riskMod.calculate(),
     summary: () => _riskMod.summary(),
     assetRankings: () => _riskMod.assetRiskRankings(),
   },
@@ -233,6 +241,7 @@ export const api: {
     update: (assetId, payload) => _assumptionsMod.update(assetId, payload),
   },
   simulation: {
+    portfolio: () => _simulationMod.portfolio(),
     run: (payload) => _simulationMod.run(payload),
     asset: (assetId) => _simulationMod.assets.get(assetId),
   },
@@ -271,7 +280,7 @@ export const api: {
     },
     costs: () => _remediationMod.costs(),
     tasks: () => _remediationMod.tasks(),
-    updateTask: (controlKey, status) => _remediationMod.updateTask(controlKey, status),
+    updateTask: (controlKey, status, coverage, taskId) => _remediationMod.updateTask(controlKey, status, coverage, taskId),
     impact: () => _remediationMod.impact(),
   },
   ai: {
