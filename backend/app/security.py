@@ -4,7 +4,7 @@ import threading
 import time
 from collections import deque
 
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Request
 
 from app.config import settings
 
@@ -19,25 +19,31 @@ def require_demo_token(x_demo_token: str | None = Header(default=None)) -> None:
 
 class RateLimit:
     """One shared bucket per demo route group; bounded memory, no client spoofing."""
-    def __init__(self, limit: int = 10, window: float = 60):
+    def __init__(self, limit: int = 10, window: float = 60, per_client: bool = False):
         self.limit = limit
         self.window = window
+        self.per_client = per_client
         self.hits = deque()
+        self.client_hits = {}
         self.lock = threading.Lock()
 
     def clear(self):
         with self.lock:
             self.hits.clear()
+            self.client_hits.clear()
 
-    def __call__(self):
+    def __call__(self, request: Request):
         now = time.monotonic()
+        key = request.client.host if self.per_client and request.client else 'unknown'
         with self.lock:
-            while self.hits and now - self.hits[0] >= self.window:
-                self.hits.popleft()
-            if len(self.hits) >= self.limit:
+            bucket = self.client_hits.setdefault(key, deque()) if self.per_client else self.hits
+            while bucket and now - bucket[0] >= self.window:
+                bucket.popleft()
+            if len(bucket) >= self.limit:
                 raise HTTPException(status_code=429, detail='Too many requests; try again shortly', headers={'Retry-After': str(int(self.window))})
-            self.hits.append(now)
+            bucket.append(now)
 
 
-ai_limit = RateLimit()
 upload_limit = RateLimit()
+ai_explain_limit = RateLimit(per_client=True)
+ai_executive_limit = RateLimit(per_client=True)

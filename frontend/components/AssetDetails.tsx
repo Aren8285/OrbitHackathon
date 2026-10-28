@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { vulnerabilities, mapApiError, type AssetRuntime, type VulnerabilityRuntime } from '@/lib';
-import { priorityColor } from '@/lib/format';
+import { formatCurrencyCompact, priorityColor } from '@/lib/format';
 
 export default function AssetDetails({ asset, onClose }: { asset: AssetRuntime; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -29,6 +29,26 @@ export default function AssetDetails({ asset, onClose }: { asset: AssetRuntime; 
       <button type="button" onClick={() => dialog.current?.close()} className="rounded border border-slate-600 px-3 py-1">Close</button>
     </div>
     <p className="mt-4 text-sm">Owner: {asset.owner || 'Unassigned'} · {asset.internet_facing ? 'Internet-facing' : 'Internal'} · Criticality {asset.criticality}/10</p>
+    <section className="mt-5 border-y border-slate-700 py-4" aria-label="Asset scenario losses">
+      <h3 className="mb-3 text-sm font-semibold">Annual loss exposure</h3>
+      {asset.coverage === 'none' ? (
+        <p className="text-sm text-amber-300">{asset.coverage_reason || 'No risk scenario is linked to this asset'}</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <div><p className="kpi-label">Expected annual loss</p><p className="money mt-1 text-sm">{asset.expected_annual_loss_inr == null ? '—' : formatCurrencyCompact(asset.expected_annual_loss_inr)}</p></div>
+            <div><p className="kpi-label">P50</p><p className="money mt-1 text-sm">{asset.p50_inr == null ? '—' : formatCurrencyCompact(asset.p50_inr)}</p></div>
+            <div><p className="kpi-label">P95</p><p className="money mt-1 text-sm">{asset.p95_inr == null ? '—' : formatCurrencyCompact(asset.p95_inr)}</p></div>
+          </div>
+          {(asset.scenario_losses?.length ?? 0) > 1 && <div className="mt-4 space-y-2">
+            <p className="kpi-label">Linked scenarios</p>
+            {asset.scenario_losses?.map(scenario => <div key={scenario.scenario_key} className="flex flex-wrap justify-between gap-2 text-xs">
+              <span>{scenario.scenario_name}</span><span className="money">Expected {formatCurrencyCompact(scenario.expected_annual_loss_inr)} · P50 {formatCurrencyCompact(scenario.p50_inr)} / P95 {formatCurrencyCompact(scenario.p95_inr)}</span>
+            </div>)}
+          </div>}
+        </>
+      )}
+    </section>
     <h3 className="mt-6 mb-3 font-semibold">Vulnerabilities</h3>
     {loading && <p role="status">Loading vulnerabilities...</p>}
     {error && <div role="alert"><p className="text-rose-300">{error}</p><button onClick={() => void load()} className="mt-2 underline">Retry</button></div>}

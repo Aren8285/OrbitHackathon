@@ -12,6 +12,12 @@
 
 export interface AssetRuntime {
   priority_label?: 'P0' | 'P1' | 'P2' | 'P3';
+  coverage?: 'linked' | 'none';
+  coverage_reason?: string | null;
+  expected_annual_loss_inr?: number | null;
+  p50_inr?: number | null;
+  p95_inr?: number | null;
+  scenario_losses?: Array<{scenario_key: string; scenario_name: string; expected_annual_loss_inr: number; p50_inr: number; p95_inr: number}>;
   asset_id: string;
   asset_name: string;
   asset_type: string;
@@ -130,6 +136,12 @@ export interface AssetRiskRankingRuntime {
   max_technical_risk: number;
   max_priority: number;
   assumed_impact_inr: number;
+  coverage: 'linked' | 'none';
+  coverage_reason: string | null;
+  expected_annual_loss_inr: number | null;
+  p50_inr: number | null;
+  p95_inr: number | null;
+  scenario_losses: Array<{scenario_key: string; scenario_name: string; expected_annual_loss_inr: number; p50_inr: number; p95_inr: number}>;
 }
 
 export interface RiskSummaryRuntime {
@@ -143,6 +155,7 @@ export interface RiskSummaryRuntime {
   kev_vulnerabilities: number;
   assumed_exposure_inr: number;
   financial_note: string;
+  top_risks: Array<{asset_id: string; asset_name: string; priority_label: 'P0' | 'P1' | 'P2' | 'P3'; expected_annual_loss_inr: number | null; p50_inr: number | null; p95_inr: number | null; coverage: 'linked' | 'none'; coverage_reason: string | null}>;
 }
 
 // ---------------------------------------------------------------------------
@@ -252,6 +265,7 @@ export interface OptimizerRecommendationRuntime {
   recommended_controls: Array<ControlRecommendationRuntime>;
   never_exceeded_budget: boolean;
   asset_id: string;
+  warning?: string | null;
   assumptions: Record<string, unknown>;
 }
 

@@ -31,6 +31,33 @@ def test_summary_is_derived_from_seeded_database(db, client):
     )
     assert body['assumed_exposure_inr'] == expected_exposure
     assert 'assumption' in body['financial_note'].lower()
+    assert len(body['top_risks']) == 5
+    assert all({'asset_id', 'priority_label', 'expected_annual_loss_inr', 'p95_inr'} <= row.keys()
+               for row in body['top_risks'])
+
+
+def test_payment_asset_detail_includes_same_scenario_loss_range(client):
+    seeded = client.post('/api/demo/seed')
+    assert seeded.status_code == 200
+    asset = client.get('/api/assets/A-001').json()
+    assert asset['coverage'] == 'linked'
+    assert asset['expected_annual_loss_inr'] > 0
+    assert 0 <= asset['p50_inr'] <= asset['p95_inr']
+    assert len(asset['scenario_losses']) == 1
+    assert asset['scenario_losses'][0]['scenario_key'] == 'ransomware'
+    listed = next(row for row in client.get('/api/risk/assets').json() if row['asset_id'] == 'A-001')
+    assert listed['p50_inr'] == asset['p50_inr'] and listed['p95_inr'] == asset['p95_inr']
+
+
+def test_asset_without_scenario_has_explicit_coverage_and_optimizer_warning(client):
+    assert client.post('/api/demo/seed').status_code == 200
+    asset = client.get('/api/assets/A-004').json()
+    assert asset['coverage'] == 'none'
+    assert asset['coverage_reason'] == 'No risk scenario is linked to this asset'
+    assert asset['expected_annual_loss_inr'] is None
+    response = client.get('/api/optimizer/recommend?asset_id=A-004&budget=1000000')
+    assert response.status_code == 200
+    assert response.json()['warning'] == asset['coverage_reason']
 
 
 def test_payment_db_finding_row_is_scored_correctly(db, client):

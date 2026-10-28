@@ -44,6 +44,9 @@ export default function BudgetOptimizerPage() {
     return () => { active = false; clearTimeout(timer); };
   }, [budget, required, excluded, assetId, catalogLoading, catalogError, assets.length, controls.length]);
   const invalidate = () => { setLoading(true); setResult(null); setError(null); };
+  const selectedAsset = assets.find(asset => asset.asset_id === assetId);
+  const noScenarioNotice = selectedAsset?.coverage === 'none' || Boolean(result?.warning);
+  const chartTooltip = {borderRadius: 4, fontSize: 12, fontFamily: 'var(--font-mono), monospace'};
   const change = (key: string, mode: 'required' | 'excluded') => {
     invalidate();
     const next = toggleConstraint(required, excluded, key, mode);
@@ -63,6 +66,7 @@ export default function BudgetOptimizerPage() {
           {assets.map(asset => <option key={asset.asset_id} value={asset.asset_id}>{asset.asset_name} ({asset.asset_id})</option>)}
         </select>
       </label>
+      {selectedAsset?.coverage === 'none' && <p role="status" className="mb-4 border-l-2 border-amber-500 px-3 py-2 text-sm text-amber-300">No scenario linked, so loss is not modelled for this asset</p>}
       <p className="mb-3">Budget: {money(budget)}</p>
       <BudgetSlider value={budget} min={OPTIMIZER_MIN_BUDGET} max={OPTIMIZER_MAX_BUDGET} step={100_000} onChange={value => { if (value !== budget) { invalidate(); setBudget(value); } }} />
       <div className="control-constraints">
@@ -79,7 +83,7 @@ export default function BudgetOptimizerPage() {
     </div>}
     {!catalogLoading && !catalogError && assets.length > 0 && controls.length > 0 && loading && <p role="status">Calculating recommendations...</p>}
     {error && <p role="alert" className="text-rose-300">{error}</p>}
-    {!loading && !catalogLoading && !catalogError && result && <>
+    {!loading && !catalogLoading && !catalogError && result && !noScenarioNotice && <>
       <div className="kpi-strip">
         {[
           ['Total cost', money(result.total_cost)],
@@ -90,7 +94,7 @@ export default function BudgetOptimizerPage() {
       </div>
       <div className="risk-panel h-64 p-4"><ResponsiveContainer width="100%" height="100%">
         <BarChart data={[{name:'Before', loss:result.expected_loss_before/100000},{name:'Proposed',loss:result.expected_loss_after/100000}]}>
-          <XAxis dataKey="name"/><YAxis label={{value:'INR lakh',angle:-90,position:'insideLeft'}}/><Tooltip formatter={value => [money(Number(value) * 100000), "Expected annual loss"]}/><Bar isAnimationActive={false} dataKey="loss" fill="#9cb7ca"><LabelList dataKey="loss" position="top" formatter={(value: unknown) => money(Number(value) * 100000)} fill="#bcc3ca" /></Bar>
+          <XAxis dataKey="name" tick={{fontSize: 12}}/><YAxis tick={{fontSize: 12}} label={{value:'INR lakh',angle:-90,position:'insideLeft',fontSize:12}}/><Tooltip contentStyle={chartTooltip} formatter={value => [money(Number(value) * 100000), "Expected annual loss"]}/><Bar isAnimationActive={false} dataKey="loss" fill="#9cb7ca"><LabelList dataKey="loss" position="top" formatter={(value: unknown) => money(Number(value) * 100000)} fill="#bcc3ca" fontSize={12} /></Bar>
         </BarChart>
       </ResponsiveContainer></div>
       <div className="risk-panel p-5">

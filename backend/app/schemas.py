@@ -45,8 +45,22 @@ class AssetCreate(AssetBase):
     pass
 
 
+class AssetScenarioLoss(BaseModel):
+    scenario_key: str
+    scenario_name: str
+    expected_annual_loss_inr: int
+    p50_inr: int
+    p95_inr: int
+
+
 class AssetOut(AssetBase):
     priority_label: str = 'P3'
+    coverage: Literal['linked', 'none'] = 'none'
+    coverage_reason: Optional[str] = 'No risk scenario is linked to this asset'
+    expected_annual_loss_inr: Optional[int] = None
+    p50_inr: Optional[int] = None
+    p95_inr: Optional[int] = None
+    scenario_losses: List[AssetScenarioLoss] = Field(default_factory=list)
     id: int
 
 
@@ -380,6 +394,17 @@ class ImpactAssumptionUpdate(BaseModel):
     assumed_impact_inr: Optional[int] = Field(None, ge=0, le=10_000_000_000, description='integer INR')
 
 
+class RiskTopAsset(BaseModel):
+    asset_id: str
+    asset_name: str
+    priority_label: Literal['P0', 'P1', 'P2', 'P3']
+    expected_annual_loss_inr: Optional[int] = None
+    p50_inr: Optional[int] = None
+    p95_inr: Optional[int] = None
+    coverage: Literal['linked', 'none']
+    coverage_reason: Optional[str] = None
+
+
 class RiskSummary(BaseModel):
     total_assets: int
     critical_assets: int
@@ -400,6 +425,7 @@ class RiskSummary(BaseModel):
     p95_inr: int
     p99_inr: int
     histogram: List[Dict[str, int]]
+    top_risks: List[RiskTopAsset] = Field(default_factory=list)
 
 
 class FindingRanking(BaseModel):
@@ -437,6 +463,12 @@ class AssetRiskRanking(BaseModel):
     max_technical_risk: float
     max_priority: float
     assumed_impact_inr: int
+    coverage: Literal['linked', 'none']
+    coverage_reason: Optional[str] = None
+    expected_annual_loss_inr: Optional[int] = None
+    p50_inr: Optional[int] = None
+    p95_inr: Optional[int] = None
+    scenario_losses: List[AssetScenarioLoss] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------- Simulation & optimization
@@ -520,6 +552,7 @@ class OptimizerRecommendation(BaseModel):
     recommended_controls: List[ControlRecommendation]
     never_exceeded_budget: bool
     asset_id: Optional[str] = None
+    warning: Optional[str] = None
     assumptions: dict
 
 

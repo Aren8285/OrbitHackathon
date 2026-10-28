@@ -15,27 +15,27 @@ from sqlalchemy.orm import Session
 from app import schemas
 from app.database import get_db
 from app.services import copilot, llm
-from app.security import ai_limit
+from app.security import ai_explain_limit, ai_executive_limit
 
-router = APIRouter(dependencies=[Depends(ai_limit)])
+router = APIRouter()
 # Kept for tests that explicitly reset the shared limiter.
-_rate_hits = ai_limit.hits
-RATE_MAX_REQUESTS = ai_limit.limit
+_rate_hits = ai_explain_limit.client_hits
+RATE_MAX_REQUESTS = ai_explain_limit.limit
 
 @router.get('/explain-risk', response_model=schemas.AiExplainResponse)
-def ai_explain(db: Session = Depends(get_db)):
+def ai_explain(db: Session = Depends(get_db), _rate=Depends(ai_explain_limit)):
     metrics = copilot.build_metrics(db)
     return copilot.explain(metrics)
 
 
 @router.get('/metrics', response_model=schemas.CopilotMetrics)
 def ai_metrics(db: Session = Depends(get_db)):
-    """The validated metrics block only - useful for demos and tests with the same shared AI rate limit."""
+    """The validated calculated metrics block; does not call a model."""
     return copilot.validated_metrics(copilot.build_metrics(db))
 
 
 @router.get('/executive-summary', response_model=schemas.AiExplainResponse)
-def executive_summary(db: Session = Depends(get_db)):
+def executive_summary(db: Session = Depends(get_db), _rate=Depends(ai_executive_limit)):
     return copilot.explain(copilot.build_metrics(db), kind='executive-summary')
 
 

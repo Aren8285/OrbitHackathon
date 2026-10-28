@@ -5,6 +5,7 @@ Controls reduce that loss multiplicatively; portfolio percentiles come from
 summing aligned annual draws, never adding individual scenario percentiles.
 """
 import zlib
+from functools import lru_cache
 
 import numpy as np
 from sqlalchemy import select
@@ -33,9 +34,30 @@ def sample_inputs(scenario, seed=mc.DEFAULT_SEED, iterations=mc.DEFAULT_ITERATIO
 
 
 def annual_samples(scenario, seed=mc.DEFAULT_SEED, iterations=mc.DEFAULT_ITERATIONS):
-    draws = sample_inputs(scenario, seed, iterations)
+    ranges = tuple(
+        getattr(scenario, f'{field}_{level}')
+        for field in INPUTS for level in ('low', 'likely', 'high')
+    )
+    return _cached_annual_samples(scenario.scenario_key, ranges, seed, iterations)
+
+
+@lru_cache(maxsize=256)
+def _cached_annual_samples(scenario_key, ranges, seed, iterations):
+    if not 1000 <= iterations <= mc.MAX_ITERATIONS:
+        raise ValueError('iterations must be between 1000 and 50000')
+    rng = np.random.default_rng((seed + zlib.crc32(scenario_key.encode())) % 2**32)
+    draws = {}
+    for index, field in enumerate(INPUTS):
+        low, likely, high = ranges[index * 3:index * 3 + 3]
+        if not all(np.isfinite([low, likely, high])) or not 0 <= low <= likely <= high:
+            raise ValueError(f'Invalid {field} range')
+        if field == 'compromise_probability' and high > 1:
+            raise ValueError('Compromise probability must be 0-1')
+        draws[field] = mc.sample_pert(rng, low, likely, high, iterations)
     costs = sum(draws[field] for field in INPUTS[2:])
-    return draws['frequency'] * draws['compromise_probability'] * costs
+    result = draws['frequency'] * draws['compromise_probability'] * costs
+    result.setflags(write=False)
+    return result
 
 
 def effective_control(control, prospective=False):
@@ -114,6 +136,29 @@ def portfolio(db, asset_id=None, seed=mc.DEFAULT_SEED, iterations=mc.DEFAULT_ITE
     result = evaluate(scenarios, controls, raw, excluded=excluded, seed=seed, iterations=iterations)
     result['asset_id'] = asset_id
     return result
+
+
+def asset_portfolios(db, seed=mc.DEFAULT_SEED, iterations=mc.DEFAULT_ITERATIONS):
+    """Calculate one portfolio and scenario breakdown for each linked asset."""
+    scenarios, controls, raw = context(db, seed=seed, iterations=iterations)
+    grouped = {}
+    for scenario in scenarios:
+        grouped.setdefault(scenario.asset_id, []).append(scenario)
+    output = {}
+    for asset_id, rows in grouped.items():
+        result = evaluate(rows, controls, {row.id: raw[row.id] for row in rows}, seed=seed, iterations=iterations)
+        output[asset_id] = {
+            'expected_annual_loss_inr': result['expected_annual_loss_inr'],
+            'p50_inr': result['p50_inr'],
+            'p95_inr': result['p95_inr'],
+            'scenario_losses': [
+                {'scenario_key': row['scenario_key'], 'scenario_name': row['name'],
+                 'expected_annual_loss_inr': row['expected_annual_loss_inr'],
+                 'p50_inr': row['p50_inr'], 'p95_inr': row['p95_inr']}
+                for row in result['scenarios']
+            ],
+        }
+    return output
 
 
 def persist(db, result):

@@ -55,7 +55,7 @@ export default function LossCurveChart({
           type="number"
           domain={[0, 100]}
           tickFormatter={formatX}
-          tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'inherit' }}
+          tick={{ fill: '#94a3b8', fontSize: 12, fontFamily: 'inherit' }}
           axisLine={{ stroke: 'rgba(148,163,184,0.15)' }}
           tickLine={false}
           interval="preserveStartEnd"
@@ -63,7 +63,7 @@ export default function LossCurveChart({
 
         <YAxis
           tickFormatter={formatY}
-          tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'inherit' }}
+          tick={{ fill: '#94a3b8', fontSize: 12, fontFamily: 'inherit' }}
           axisLine={false}
           tickLine={false}
           width={48}
@@ -73,8 +73,9 @@ export default function LossCurveChart({
           contentStyle={{
             backgroundColor: 'rgba(20,33,62,0.92)',
             border: '1px solid rgba(34,211,238,0.18)',
-            borderRadius: 8,
-            fontSize: 11,
+            borderRadius: 4,
+            fontFamily: 'var(--font-mono), monospace',
+            fontSize: 12,
             color: '#e2e8f0',
           }}
           labelStyle={{ color: '#94a3b8' }}
@@ -93,7 +94,7 @@ export default function LossCurveChart({
               value: 'P10',
               position: 'top',
               fill: '#a1b89e',
-              fontSize: 9,
+              fontSize: 12,
               fontFamily: 'inherit',
             }}
           />
@@ -108,7 +109,7 @@ export default function LossCurveChart({
               value: 'P90',
               position: 'top',
               fill: '#c4ad7d',
-              fontSize: 9,
+              fontSize: 12,
               fontFamily: 'inherit',
             }}
           />
@@ -124,7 +125,7 @@ export default function LossCurveChart({
               value: 'P95',
               position: 'top',
               fill: '#ce918b',
-              fontSize: 9,
+              fontSize: 12,
               fontFamily: 'inherit',
             }}
           />
@@ -139,7 +140,7 @@ export default function LossCurveChart({
               value: 'P99',
               position: 'top',
               fill: '#9aa4ad',
-              fontSize: 9,
+              fontSize: 12,
               fontFamily: 'inherit',
             }}
           />

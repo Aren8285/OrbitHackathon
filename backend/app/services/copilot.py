@@ -5,15 +5,17 @@ Security rules implemented here (security.md / TASK 5):
 - Metrics are computed by risk_service / simulation_service / optimizer from
   database rows. The phone number of the scenario, budget, and every figure
   comes from the DB - nothing is invented for the model.
-- The LLM sees only the JSON metrics block plus a system prompt that tells it
-  to treat the JSON as data, never as instructions, and never to invent
-  numbers. Output text is scanned with llm.unapproved_numbers(); any invented
-  figure discards the reply and the deterministic fallback renders instead.
+- The LLM sees only the calculated JSON metrics plus a system prompt requiring
+  placeholders. Server-side substitution rejects invented figures before a
+  response is served; invalid replies fall back to the deterministic template.
 - Short names/titles are untrusted data; prompts and numeric validation
   prevent them from changing calculated metrics.
 """
 
 import json
+import hashlib
+import threading
+import time
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -37,6 +39,14 @@ DATA_SOURCES_NOTE = (
 TOP_RISK_LIMIT = 5
 
 DEMO_SCENARIO_ASSET_ID = 'A-001'  # coder.md demo story: FinPay payment database
+_EXPLANATION_CACHE_SECONDS = 600
+_explanation_cache = {}
+_cache_lock = threading.Lock()
+
+
+def clear_explanation_cache():
+    with _cache_lock:
+        _explanation_cache.clear()
 
 
 def build_metrics(db: Session) -> dict:
@@ -93,18 +103,29 @@ def validated_metrics(metrics: dict) -> schemas.CopilotMetrics:
 def explain(metrics: dict, kind: str = 'explain-risk') -> dict:
     """Only valid calculated-number text is served; every failure uses template."""
     validated = validated_metrics(metrics).model_dump()
+    cache_key = hashlib.sha256((kind + ':' + json.dumps(validated, sort_keys=True, separators=(',', ':'))).encode()).hexdigest()
+    now = time.monotonic()
+    with _cache_lock:
+        for old_key, (created, _) in list(_explanation_cache.items()):
+            if now - created >= _EXPLANATION_CACHE_SECONDS:
+                _explanation_cache.pop(old_key, None)
+        cached = _explanation_cache.get(cache_key)
+        if cached and now - cached[0] < _EXPLANATION_CACHE_SECONDS:
+            return dict(cached[1])
+        _explanation_cache.pop(cache_key, None)
     reason = None
     if settings.llm_provider != 'gemini' or not settings.gemini_api_key:
         reason = 'Gemini provider disabled or key missing'
     else:
         try:
             system_prompt, user_prompt = llm.build_prompts(validated, kind)
-            reply, model = llm.call_llm(system_prompt, user_prompt)
-            if llm.reply_is_valid(reply, json.loads(user_prompt)):
-                llm.record_model(model)
-                return dict(explanation=reply, source='llm', model=model, fallback_reason=None,
-                            metrics=validated, disclaimer=DISCLAIMER)
-            reason = 'Gemini reply discarded: numeric or length validation failed'
+            reply, model = llm.call_llm(system_prompt, user_prompt, validation_metrics=validated)
+            llm.record_model(model)
+            result = dict(explanation=reply, source='llm', model=model, fallback_reason=None,
+                          metrics=validated, disclaimer=DISCLAIMER)
+            with _cache_lock:
+                _explanation_cache[cache_key] = (time.monotonic(), result)
+            return result
         except llm.LLMError as exc:
             reason = str(exc)
         except Exception:

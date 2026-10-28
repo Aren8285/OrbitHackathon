@@ -9,7 +9,7 @@ from app import models
 from app.main import app
 from app.config import Settings
 from app.scripts.seed import seed_database
-from app.security import ai_limit, upload_limit
+from app.security import ai_explain_limit, ai_executive_limit, upload_limit
 from tests.conftest import ASSET_CSV_MINIMAL, csv_upload
 from app.database import CompanySession
 
@@ -131,11 +131,16 @@ def test_gets_do_not_write_even_with_missing_assumptions(db, client):
     assert db.query(models.ImpactAssumption).count() == 1
 
 
-@pytest.mark.parametrize('path', ['/api/ai/metrics', '/api/ai/explain-risk', '/api/ai/executive-summary', '/api/ai/status'])
-def test_all_ai_routes_share_limit(client, monkeypatch, path):
-    monkeypatch.setattr(ai_limit, 'limit', 1)
-    assert client.get(path).status_code == 200
-    assert client.get('/api/ai/metrics').status_code == 429
+def test_ai_metadata_routes_are_unlimited_and_model_routes_have_separate_client_buckets(client, monkeypatch):
+    monkeypatch.setattr(ai_explain_limit, 'limit', 1)
+    monkeypatch.setattr(ai_executive_limit, 'limit', 1)
+    assert client.get('/api/ai/status').status_code == 200
+    assert client.get('/api/ai/metrics').status_code == 200
+    assert client.get('/api/ai/metrics').status_code == 200
+    assert client.get('/api/ai/explain-risk').status_code == 200
+    assert client.get('/api/ai/explain-risk').status_code == 429
+    assert client.get('/api/ai/executive-summary').status_code == 200
+    assert client.get('/api/ai/executive-summary').status_code == 429
 
 
 @pytest.mark.parametrize('path', ['/api/assets/import-csv', '/api/vulnerabilities/import', '/api/controls/import'])
@@ -152,7 +157,7 @@ def test_cors_has_no_development_regex(client):
     assert response.status_code == 400
     assert 'access-control-allow-origin' not in response.headers
     with pytest.raises(ValueError):
-        Settings(allowed_origins=['*'])
+        Settings(cors_origins=['*'])
 
 
 def test_canonical_seed_and_ai_routes(client, db):

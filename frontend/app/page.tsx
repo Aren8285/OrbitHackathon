@@ -15,7 +15,6 @@ import {
 } from 'recharts';
 import {
   type AssetRiskRankingRuntime,
-  type FindingRankingRuntime,
   type OptimizerRecommendationRuntime,
   type RiskSummaryRuntime,
   type SimulationResultRuntime,
@@ -37,7 +36,6 @@ type DashboardData = {
   summary: RiskSummaryRuntime;
   simulation: SimulationResultRuntime;
   optimizer: OptimizerRecommendationRuntime;
-  rankings: FindingRankingRuntime[];
   assets: AssetRiskRankingRuntime[];
 };
 
@@ -112,15 +110,14 @@ export default function ExecutiveDashboard() {
       if (summary.total_assets === 0) {
         setData(null); setStatus('empty'); return;
       }
-      const [simulation, optimizer, rankings, assets] = await Promise.all([
+      const [simulation, optimizer, assets] = await Promise.all([
         api.simulation.portfolio(),
         api.optimizer.full({
           budget_inr: 5_000_000,
         }),
-        api.findingRankings.list(true),
         api.risk.assetRankings(),
       ]);
-      setData({ summary, simulation, optimizer, rankings, assets });
+      setData({ summary, simulation, optimizer, assets });
       setStatus(summary.total_assets === 0 ? 'empty' : 'ready');
     } catch (err) {
       setError(mapApiError(err));
@@ -153,7 +150,7 @@ export default function ExecutiveDashboard() {
       }));
   }, [data]);
 
-  const topRisks = useMemo(() => data?.rankings.slice(0, 5) ?? [], [data]);
+  const topRisks = useMemo(() => data?.summary.top_risks.slice(0, 5) ?? [], [data]);
 
   const beforeAfter = useMemo(() => {
     if (!data) return [];
@@ -171,16 +168,18 @@ export default function ExecutiveDashboard() {
 
   const loadDemo = async () => {
     setSeeding(true); setError(null);
-    try { await api.demo.seed(); await api.risk.calculate(); await fetchData(); }
+    try { await api.demo.seed(); await fetchData(); }
     catch (err) { setError(mapApiError(err)); setStatus('error'); }
     finally { setSeeding(false); }
   };
   const demoAction = <div className="text-left">
     <button type="button" disabled={seeding} onClick={() => void loadDemo()}
       className="rounded border border-[color:var(--hairline-strong)] bg-[color:var(--accent-soft)] px-4 py-2 text-sm text-[color:var(--ink-primary)] disabled:opacity-50">
-      {seeding ? 'Rebuilding FinPay demo...' : 'Load FinPay demo'}
+      {seeding ? 'Loading FinPay demo...' : 'Load FinPay demo'}
     </button>
-    <p className="mt-1 text-xs text-slate-500">Replaces FinPay demo data and recalculates risk.</p>
+    {seeding
+      ? <p role="status" aria-live="polite" className="mt-2 flex items-center gap-2 text-xs text-[color:var(--ink-secondary)]"><span aria-hidden="true" className="h-3 w-3 animate-spin rounded-full border border-[color:var(--hairline-strong)] border-t-[color:var(--accent)]" />Loading demo data and calculating risk...</p>
+      : <p className="mt-1 text-xs text-slate-500">Replaces demo data and calculates risk in one step.</p>}
   </div>;
 
   const refresh = () => fetchData();
@@ -251,6 +250,8 @@ export default function ExecutiveDashboard() {
     background: 'var(--surface-panel)',
     border: '1px solid var(--hairline-strong)',
     borderRadius: 4,
+    fontFamily: 'var(--font-mono), monospace',
+    fontSize: 12,
     color: 'var(--ink-primary)',
   };
 
@@ -320,10 +321,10 @@ export default function ExecutiveDashboard() {
               <CartesianGrid stroke={chartGrid} strokeDasharray="3 4" />
               <XAxis dataKey="loss" type="number" domain={[(sim.histogram[0]?.low_inr ?? 0)/100000, (sim.histogram[39]?.high_inr ?? 100000)/100000]} tick={chartTick} tickFormatter={value => `${Number(value).toFixed(0)}L`} />
               <YAxis tick={chartTick} />
-              <Tooltip contentStyle={chartTooltip} labelFormatter={value => `${Number(value).toFixed(1)} lakh INR`} />
+              <Tooltip contentStyle={chartTooltip} labelFormatter={value => formatCurrencyCompact(Number(value) * 100_000)} />
               <Bar isAnimationActive={false} dataKey="count" fill="#9cb7ca" />
-              <ReferenceLine x={sim.p50_inr / 100000} label={{value:"P50", position:"insideTopRight", fill:"#bcc3ca"}} stroke="#bcc3ca" strokeDasharray="3 3" />
-              <ReferenceLine x={sim.p95_inr / 100000} label={{value:"P95", position:"insideTopRight", fill:"#c4ad7d"}} stroke="#c4ad7d" strokeDasharray="3 3" />
+              <ReferenceLine x={sim.p50_inr / 100000} label={{value:"P50", position:"top", fill:"#bcc3ca", fontSize:12, fontFamily:'var(--font-mono), monospace'}} stroke="#bcc3ca" strokeDasharray="3 3" />
+              <ReferenceLine x={sim.p95_inr / 100000} label={{value:"P95", position:"top", fill:"#c4ad7d", fontSize:12, fontFamily:'var(--font-mono), monospace'}} stroke="#c4ad7d" strokeDasharray="3 3" />
             </BarChart>
           </ResponsiveContainer>
         </Panel>
@@ -340,7 +341,7 @@ export default function ExecutiveDashboard() {
               <YAxis dataKey="name" type="category" tick={{ ...chartTick, fontSize: 12 }} width={112} tickLine={false} />
               <Tooltip contentStyle={chartTooltip} />
               <Bar dataKey="priority" fill="var(--accent)" radius={0} isAnimationActive={false}>
-                <LabelList dataKey="priority" position="right" formatter={(value: unknown) => Number(value).toFixed(2)} fill="#bcc3ca" />
+                <LabelList dataKey="priority" position="right" formatter={(value: unknown) => Number(value).toFixed(2)} fill="#bcc3ca" fontSize={12} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -399,11 +400,12 @@ export default function ExecutiveDashboard() {
             </div>
           ) : (
             <div className="table-scroll"><table>
-              <thead><tr><th>Asset / finding</th><th>Priority</th><th>KEV</th></tr></thead>
-              <tbody>{topRisks.map((r) => <tr key={`${r.cve_id}-${r.asset_id}`}>
-                <td><div className="text-sm font-medium">{r.asset_name}</div><div className="risk-id mt-1 text-slate-400">{r.cve_id}</div><div className="mt-1 text-xs text-slate-400">{r.title}</div></td>
+              <thead><tr><th>Asset</th><th>Priority</th><th className="numeric">Expected loss</th><th className="numeric">P95</th></tr></thead>
+              <tbody>{topRisks.map((r) => <tr key={r.asset_id}>
+                <td><div className="text-sm font-medium">{r.asset_name}</div><div className="risk-id mt-1 text-slate-400">{r.asset_id}</div>{r.coverage === 'none' && <div className="mt-1 text-xs text-slate-500">{r.coverage_reason}</div>}</td>
                 <td><span className={priorityColor(r.priority_label)}>{r.priority_label}</span></td>
-                <td>{r.is_kev && <span className="risk-tag kev-tag">KEV</span>}</td>
+                <td className="numeric money">{r.expected_annual_loss_inr == null ? '—' : formatCurrencyCompact(r.expected_annual_loss_inr)}</td>
+                <td className="numeric money">{r.p95_inr == null ? '—' : formatCurrencyCompact(r.p95_inr)}</td>
               </tr>)}</tbody>
             </table></div>
           )}

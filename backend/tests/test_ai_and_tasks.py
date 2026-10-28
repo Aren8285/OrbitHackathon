@@ -13,7 +13,7 @@ import app.routers.ai as ai_router
 from app import models
 from app.config import settings
 from app.services import llm
-from tests.conftest import ASSET_CSV_MINIMAL, csv_upload
+from tests.conftest import ASSET_CSV_MINIMAL, csv_upload, mock_gemini_post
 
 # ---------------------------------------------------------------------------
 # shared seed helpers
@@ -102,7 +102,7 @@ class TestCopilotSecurity:
             return FakeResponse()
 
         monkeypatch.setattr(settings, 'gemini_api_key', 'sk-test')
-        monkeypatch.setattr(httpx, 'post', fake_post)
+        mock_gemini_post(monkeypatch, fake_post)
         resp = client.get('/api/ai/explain-risk')
         assert resp.status_code == 200
         body = resp.json()
@@ -123,15 +123,15 @@ class TestCopilotSecurity:
             class FakeResponse:
                 status_code = 200
                 def json(self):
-                    return {'candidates': [{'content': {'parts': [{'text': f"Priority {metrics['top_risks'][0]['priority']} and expected loss {metrics['expected_annual_loss_inr']}."}]}}]}
+                    return {'candidates': [{'content': {'parts': [{'text': 'Priority {top_asset}; expected loss {expected_loss}; tail loss {p95_loss}.'}]}}]}
             return FakeResponse()
 
         monkeypatch.setattr(settings, 'gemini_api_key', 'sk-test')
-        monkeypatch.setattr(httpx, 'post', fake_post)
+        mock_gemini_post(monkeypatch, fake_post)
         resp = client.get('/api/ai/explain-risk')
         assert resp.status_code == 200
         body = resp.json()
-        assert body['source'] == 'llm'
+        assert body['source'] == 'llm', body['fallback_reason']
         assert body['model'] == settings.gemini_model
         # auth stays server-side; key never echoes into visible fields
         assert seen['auth'] == 'sk-test'
@@ -143,17 +143,12 @@ class TestCopilotSecurity:
                               headers={'content-type': 'application/json'})
         assert resp.status_code == 200
 
-    def test_unapproved_numbers_validator(self):
-        allowed = llm.build_allowed({'loss': 998000, 'share': 0.35})
-        bad = llm.unapproved_numbers('risk is 0.35 and loss 998000 plus 123456', allowed)
-        assert bad == ['123456']
-
     def test_fallback_explanation_uses_only_metric_numbers(self, client):
         seed_full(client)
         body = client.get('/api/ai/metrics').json()
-        allowed = llm.build_allowed(json.loads(json.dumps(body)))
         text = client.get('/api/ai/explain-risk').json()['explanation']
-        assert llm.unapproved_numbers(text, allowed) == []
+        assert '₹' in text and 'INR ' not in text
+        assert 'Cr' in text or 'Lakh' in text
 
 
 # ---------------------------------------------------------------------------

@@ -8,28 +8,29 @@ from sqlalchemy.exc import ArgumentError
 
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+ENV_FILE = REPO_ROOT / '.env'
+
 
 class Settings(BaseSettings):
     app_name: str = 'RiskOps'
     app_env: str = 'development'
-    debug: bool = True
-    secret_key: str = 'change-me'
-    database_url: str = 'sqlite:///./riskops.db'
-    allowed_origins: Annotated[List[str], NoDecode] = []
-    demo_api_token: str = ''
+    debug: bool = False
+    secret_key: str = Field('change-me', repr=False)
+    database_url: str = 'sqlite:///./backend/riskops.db'
+    cors_origins: Annotated[List[str], NoDecode] = []
+    demo_api_token: str = Field('', repr=False)
 
-    epss_api_url: str = 'https://api.first.org/data/v1/epss'
-    kev_api_url: str = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'
     llm_provider: str = 'gemini'
     gemini_api_key: str = Field('', repr=False)
     gemini_model: str = ''
     gemini_fallback_models: Annotated[List[str], NoDecode] = []
-    llm_timeout_seconds: float = Field(10.0, gt=0, le=120)
+    llm_timeout_seconds: float = Field(30.0, gt=0, le=30)
 
     default_budget: float = 500000.0
     simulation_iterations: int = 10000
 
-    model_config = SettingsConfigDict(env_file=(str(Path(__file__).resolve().parents[2] / '.env'), '.env'), extra='ignore', hide_input_in_errors=True)
+    model_config = SettingsConfigDict(env_file=str(ENV_FILE), extra='ignore', hide_input_in_errors=True)
 
     @field_validator('database_url')
     @classmethod
@@ -52,13 +53,13 @@ class Settings(BaseSettings):
     def parse_fallback_models(cls, value):
         return [item.strip() for item in value.split(',') if item.strip()] if isinstance(value, str) else value
 
-    @field_validator('allowed_origins', mode='before')
+    @field_validator('cors_origins', mode='before')
     @classmethod
     def parse_cors_origins(cls, value):
         if isinstance(value, str):
             value = [item.strip() for item in value.split(',') if item.strip()]
         if any('*' in item or item.rstrip('/') != item for item in value):
-            raise ValueError('ALLOWED_ORIGINS must contain exact origins without wildcards or trailing slashes')
+            raise ValueError('CORS_ORIGINS must contain exact origins without wildcards or trailing slashes')
         return value
 
 

@@ -9,6 +9,7 @@ def recommend(db, budget, must_include=(), exclude=(), asset_id=None):
     if required & excluded:
         raise ValueError('A control cannot be both required and excluded')
     scenarios, controls, raw = engine.context(db, asset_id)
+    warning = None if scenarios else 'No risk scenario is linked to this asset'
     catalog = {control.control_key: control for control in controls}
     if (required | excluded) - catalog.keys():
         raise ValueError('Unknown control key in must_include or exclude')
@@ -68,6 +69,7 @@ def recommend(db, budget, must_include=(), exclude=(), asset_id=None):
         roi=(reduction-spent)/spent if spent else None,
         recommended_controls=recommendations, selected_controls=[row['control_key'] for row in recommendations],
         never_exceeded_budget=spent <= budget, asset_id=asset_id,
+        warning=warning,
         assumptions={
             'baseline': 'current implemented controls at recorded coverage; same scenario draws as summary/simulation',
             'proposal': 'selected controls are proposed implemented rollouts at 100% coverage; not achieved risk',

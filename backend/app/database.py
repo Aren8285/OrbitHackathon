@@ -1,11 +1,12 @@
 from fastapi import HTTPException, Request
 import sqlite3
+from pathlib import Path
 
 from sqlalchemy import create_engine, event, inspect, select
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, declarative_base, sessionmaker, with_loader_criteria
 
-from app.config import settings
+from app.config import REPO_ROOT, settings
 
 @event.listens_for(Engine, 'connect')
 def enforce_sqlite_foreign_keys(connection, record):
@@ -15,7 +16,12 @@ def enforce_sqlite_foreign_keys(connection, record):
         cursor.close()
 
 
-engine = create_engine(settings.database_url, connect_args={'check_same_thread': False, 'timeout': 30})
+database_url = make_url(settings.database_url)
+if database_url.database and database_url.database != ':memory:':
+    database_path = Path(database_url.database)
+    if not database_path.is_absolute():
+        database_url = database_url.set(database=str((REPO_ROOT / database_path).resolve()))
+engine = create_engine(database_url, connect_args={'check_same_thread': False, 'timeout': 30})
 Base = declarative_base()
 
 

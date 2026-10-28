@@ -22,6 +22,7 @@ with SessionLocal() as bootstrap_db:
 
 @asynccontextmanager
 async def lifespan(app):
+    llm.log_startup_config()
     await run_in_threadpool(llm.discover_models)
     yield
 
@@ -37,7 +38,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],

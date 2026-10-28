@@ -34,6 +34,14 @@ def test_fresh_deploy_seed_creates_company_and_calculates_every_scenario(client,
     assert any(task.priority == 'P0' for task in db.scalars(select(models.RemediationTask)).all())
 
 
+def test_reseed_keeps_all_row_counts_and_one_simulation_per_scenario(client):
+    first = client.post('/api/demo/seed')
+    second = client.post('/api/demo/seed')
+    assert first.status_code == second.status_code == 200
+    assert first.json()['counts'] == second.json()['counts']
+    assert second.json()['counts']['simulation_results'] == second.json()['counts']['risk_scenarios'] == 6
+
+
 def test_rebuild_retains_other_company_data(client, db):
     with CompanySession(bind=db.get_bind(), info={'company_id': 2}) as other:
         other.add(models.Company(id=2, name='Other Company'))

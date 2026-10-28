@@ -49,7 +49,7 @@ export default function CopilotPanel() {
                   : 'bg-slate-800 text-slate-300',
               )}
             >
-              {result.model === 'template' ? 'Template' : result.model}
+              Model: {result.model === 'template' ? 'template' : result.model || 'template'}
             </span>
           )}
         </div>

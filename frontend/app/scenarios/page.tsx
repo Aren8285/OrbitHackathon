@@ -684,10 +684,10 @@ export default function ScenariosPage() {
           {/* assumptions footnote */}
           <div className="rounded-md border border-slate-700/30 bg-slate-800/30 p-3 text-xs text-slate-500">
             <span className="font-medium text-slate-400">Assumptions: </span>
-            PERT severity (low/likely/high), Poisson event frequency, Binomial
-            compromise probability, fixed seed ={' '}
-            {request.seed ?? 20261027}. All inputs are editable and labeled; the
-            backend returns a range (P50 / P95), never a single point estimate.
+            PERT sampling is applied to event frequency, compromise probability,
+            and downtime, recovery, regulatory, and reputation loss components,
+            using fixed seed = {request.seed ?? 20261027}. Inputs are editable and
+            labeled; results include a range (P50 / P95), not a single point estimate.
           </div>
 
           {/* top risks */}

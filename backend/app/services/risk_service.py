@@ -149,10 +149,12 @@ def finding_rankings(db: Session, open_only: bool = True) -> List[dict]:
     return rows
 
 
-def asset_rankings(db: Session) -> List[dict]:
+def asset_rankings(db: Session, analytic_rows=None) -> List[dict]:
     """Per-asset aggregate ranking: highest-priority finding drives the sort."""
     by_asset: dict = {}
-    analytic_rows = finding_rankings(db, open_only=True)
+    analytic_rows = analytic_rows if analytic_rows is not None else finding_rankings(db, open_only=True)
+    from app.services import scenario_engine
+    loss_by_asset = scenario_engine.asset_portfolios(db)
     for row in analytic_rows:
         by_asset.setdefault(
             row['asset_id'],
@@ -179,6 +181,7 @@ def asset_rankings(db: Session) -> List[dict]:
             'max_technical_risk': 0.0,
             'max_priority': 0.0,
         })
+        loss = loss_by_asset.get(asset.asset_id)
         result.append(
             {
                 'asset_id': asset.asset_id,
@@ -191,22 +194,35 @@ def asset_rankings(db: Session) -> List[dict]:
                 'max_priority': round(agg['max_priority'], 4),
                 'assumed_impact_inr': assumption.assumed_impact_inr,
                 'priority_label': min((row['priority_label'] for row in analytic_rows if row['asset_id'] == asset.asset_id), default='P3'),
+                'coverage': 'linked' if loss else 'none',
+                'coverage_reason': None if loss else 'No risk scenario is linked to this asset',
+                'expected_annual_loss_inr': loss['expected_annual_loss_inr'] if loss else None,
+                'p50_inr': loss['p50_inr'] if loss else None,
+                'p95_inr': loss['p95_inr'] if loss else None,
+                'scenario_losses': loss['scenario_losses'] if loss else [],
             }
         )
     result.sort(key=lambda row: (row['priority_label'], -row['max_priority'], -row['criticality'], row['asset_id']))
     return result
 
 
-def summary(db: Session) -> dict:
+def summary(db: Session, portfolio_result=None, analytic_rows=None) -> dict:
     from sqlalchemy import func
 
     all_rows = findings(db)
     open_rows = [v for v in all_rows if v.status == 'open']
-    ranked = finding_rankings(db, open_only=True)
+    ranked = analytic_rows if analytic_rows is not None else finding_rankings(db, open_only=True)
     assets = db.scalars(select(models.Asset)).all()
     total_assumed = sum(get_assumption(db, asset).assumed_impact_inr for asset in assets)
     from app.services import scenario_engine
-    portfolio = scenario_engine.portfolio(db)
+    portfolio = portfolio_result if portfolio_result is not None else scenario_engine.portfolio(db)
+    asset_rows = asset_rankings(db, analytic_rows=ranked)
+    top_risks = [
+        {key: row[key] for key in ('asset_id', 'asset_name', 'priority_label',
+                                   'expected_annual_loss_inr', 'p50_inr', 'p95_inr',
+                                   'coverage', 'coverage_reason')}
+        for row in asset_rows[:5]
+    ]
     return {
         **{key: value for key, value in portfolio.items() if key != 'scenarios'},
         'overall_risk_score': round(sum(row['technical_risk'] for row in ranked) / len(ranked), 4) if ranked else 0.0,
@@ -222,6 +238,7 @@ def summary(db: Session) -> dict:
             'assumed_exposure_inr is the sum of EDITABLE per-asset impact assumptions '
             '(default = criticality x 1 crore INR); it is not a measured or simulated loss.'
         ),
+        'top_risks': top_risks,
     }
 
 
@@ -243,7 +260,8 @@ def calculate(db, commit=True):
     scenario_engine.persist(db, result)
     remediation_tasks.seed_tasks(db, commit=False)
     remediation_tasks.ensure_finding_tasks(db)
-    ranked = {(row['asset_id'], row['cve_id']): row for row in finding_rankings(db)}
+    ranked_rows = finding_rankings(db)
+    ranked = {(row['asset_id'], row['cve_id']): row for row in ranked_rows}
     from datetime import datetime, timedelta, timezone
     from app.config import PRIORITY_DUE_DAYS
     today = datetime.now(timezone(timedelta(hours=5, minutes=30))).date()
@@ -257,4 +275,4 @@ def calculate(db, commit=True):
             task.priority = priority
             task.due_date = today + timedelta(days=PRIORITY_DUE_DAYS[priority])
     db.commit() if commit else db.flush()
-    return summary(db)
+    return summary(db, portfolio_result=result, analytic_rows=ranked_rows)

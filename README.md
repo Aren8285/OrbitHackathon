@@ -9,12 +9,17 @@ RiskOps is a lightweight risk operations platform for modeling cyber risk, prior
 
 ## Quick start
 
-1. Copy `.env.example` to `backend/.env`. Set a long random `DEMO_API_TOKEN` and
-   an exact comma-separated `ALLOWED_ORIGINS` list (for example,
+1. Copy `.env.example` to `.env` at the repository root. Set a long random `DEMO_API_TOKEN` and
+   an exact comma-separated `CORS_ORIGINS` list (for example,
    `http://localhost:3000`). No wildcard or automatic localhost-port allowance exists.
    Create `frontend/.env.local` with the **same** `DEMO_API_TOKEN` and
    `BACKEND_API_URL=http://127.0.0.1:8000`. These are server-only variables;
-   never prefix the token with `NEXT_PUBLIC_`.
+   never prefix the token with `NEXT_PUBLIC_`. The frontend file must contain
+   only `BACKEND_API_URL` and `DEMO_API_TOKEN`; copy the token from the root file.
+   There is no `backend/.env`. Backend settings read the root file by its absolute
+   path relative to `config.py`, irrespective of the launch directory. Environment
+   variables supplied by the process can still override that file for deployment
+   or isolated tests.
 2. Start the API:
    ```bash
    cd backend
@@ -38,11 +43,15 @@ RiskOps is a lightweight risk operations platform for modeling cyber risk, prior
    ```
 
 SQLite is the only supported database. `DATABASE_URL` defaults to
-`sqlite:///./riskops.db`; use a writable, persistent directory for deployed data.
+`sqlite:///./backend/riskops.db`; use a writable, persistent directory for deployed data.
+Relative SQLite paths resolve against the repository root, so root and backend
+launches use the same database. Existing local data remains in `backend/riskops.db`.
 Startup creates missing tables but does not migrate an old schema. The backend
 image bundles the demo CSVs; build it from the repository root with
 `docker build -f backend/Dockerfile .`. Compose mounts the CSVs read-only and
-persists the SQLite file in the mounted backend directory.
+persists the SQLite file in the mounted backend directory. Compose reads the
+root `.env` for both the backend and frontend credential; the frontend container
+receives only its backend URL and demo token, not the Gemini key.
 
 ## Functional areas
 - Asset inventory and criticality analysis
@@ -219,14 +228,14 @@ CSV values, including local false/zero; only missing keys use CSV fallback.
 
 ## Gemini explanations
 
-Configure these server-side values in `backend/.env` (or the root `.env`):
+Configure these server-side values in the root `.env`:
 
 ```dotenv
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=your-key
 GEMINI_MODEL=gemini-3.8-flash
 GEMINI_FALLBACK_MODELS=
-LLM_TIMEOUT_SECONDS=10
+LLM_TIMEOUT_SECONDS=30
 ```
 
 Use model IDs available to your key; the example is not an availability
@@ -241,7 +250,14 @@ only in `x-goog-api-key`, never in a query string or application logs. Timeout
 and 5xx errors retry the same model exactly once before advancing. A 429 or
 model-not-found/not-supported error advances immediately. Other errors, blocked
 or malformed replies, and exhausted chains return the template without leaking
-provider error bodies. `LLM_TIMEOUT_SECONDS` applies to each HTTP attempt.
+provider error bodies. `LLM_TIMEOUT_SECONDS` defaults to 30 seconds per model
+attempt (maximum 30). A cancellable 45-second deadline covers the entire
+generation chain, including retries and fallbacks. At that deadline the in-flight
+HTTP request is cancelled and the template is returned; another model is not started.
+
+Startup logs `config loaded from <absolute path>`, the provider and ordered model
+chain, and yes/no presence flags for the key and demo credential. Secret values
+are never logged. `DEBUG=false` is the default.
 
 Startup queries the [models endpoint](https://ai.google.dev/api/models), including
 pagination, and logs which configured models support `generateContent` and which
@@ -281,3 +297,18 @@ interpolated into that template.
 Tests mock provider GET/POST calls, and the default pytest fixture blocks real
 provider HTTP. No live Gemini call is made by the test suite. Add your real key
 only to the server `.env`, then restart the API to discover available models.
+
+
+## Rejected Gemini reply diagnostics
+
+Set `DEBUG=true` in the root `.env` temporarily and restart the backend to enable
+Gemini debug logs. Rejection diagnostics identify `word_limit`, `unknown_number`,
+or `other` (including a mismatched loss/P50/P95 claim). Reply text is recorded
+only when `DEBUG=true`, with configured credentials redacted. Without that flag,
+reply text is never logged, even when a debug log level is selected externally.
+HTTP headers, API keys and provider error bodies are never recorded.
+
+These diagnostics do not relax validation or add number placeholders. A valid
+provider response can still fall back when its wording introduces unsupported
+numbers, rounded currency values or percentage conversions. Placeholder design
+and any validation changes are deferred to Stage 2.

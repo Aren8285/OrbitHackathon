@@ -2,6 +2,8 @@
 
 import httpx
 import pytest
+import asyncio
+import sys
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -10,10 +12,17 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, CompanySession, configure_scope, get_db
 from app.config import settings
 from app import models
-from app.security import ai_limit, upload_limit
+from app.security import ai_explain_limit, ai_executive_limit, upload_limit
 from app.services import llm
+from app.services import copilot
 from fastapi import Request
 from app.main import app
+
+if sys.platform == 'win32':
+    # The sandboxed Windows Proactor loop blocks while creating its self-pipe.
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+REAL_GEMINI_POST = llm._post_gemini
 
 TEST_DATABASE_URL = 'sqlite://'
 
@@ -34,13 +43,19 @@ def isolated_db(monkeypatch):
     monkeypatch.setattr(settings, 'gemini_api_key', '')
     monkeypatch.setattr(settings, 'gemini_model', 'gemini-test-primary')
     monkeypatch.setattr(settings, 'gemini_fallback_models', [])
-    monkeypatch.setattr(settings, 'llm_timeout_seconds', 3)
+    monkeypatch.setattr(settings, 'llm_timeout_seconds', 30)
+    monkeypatch.setattr(settings, 'debug', False)
     llm.reset_status()
+    copilot.clear_explanation_cache()
     def no_real_http(*args, **kwargs):
         raise AssertionError('Real provider HTTP is forbidden in pytest; mock this request')
     monkeypatch.setattr(httpx, 'get', no_real_http)
     monkeypatch.setattr(httpx, 'post', no_real_http)
-    ai_limit.clear()
+    async def no_real_async_http(*args, **kwargs):
+        raise AssertionError('Real provider HTTP is forbidden in pytest; mock this request')
+    monkeypatch.setattr(llm, '_post_gemini', no_real_async_http)
+    ai_explain_limit.clear()
+    ai_executive_limit.clear()
     upload_limit.clear()
     # Existing import tests intentionally make more than ten uploads.
     monkeypatch.setattr(upload_limit, 'limit', 1000)
@@ -76,6 +91,12 @@ def client(db):
 def csv_upload(filename: str, text: str):
     """Build a multipart CSV upload payload for TestClient."""
     return {'file': (filename, text.encode('utf-8'), 'text/csv')}
+
+
+def mock_gemini_post(monkeypatch, callback):
+    async def post(client, url, **kwargs):
+        return callback(url, **kwargs)
+    monkeypatch.setattr(llm, '_post_gemini', post)
 
 
 ASSET_CSV_MINIMAL = (
