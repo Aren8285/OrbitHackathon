@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type SimulationRequest, type SimulationResult, mapApiError } from '@/lib';
 import { cn, formatCurrency } from '@/lib/format';
 import LossCurveChart from '@/components/LossCurveChart';
+import { ACCENT, INK_MUTED, INK_SECONDARY, SEVERITY_ROSE } from '@/lib/chart-colors';
 
 type ScenarioState = {
   result: SimulationResult | null;
@@ -316,12 +317,12 @@ function StatBlock({ label, value, accent = 'blue', sub }: {
 function accentColor(accent: string): string {
   return (
     {
-      blue: '#9cb7ca',
-      cyan: '#9cb7ca',
-      green: '#bcc3ca',
-      amber: '#bcc3ca',
-      rose: '#ce918b',
-    }[accent] ?? '#94a3b8'
+      blue: ACCENT,
+      cyan: ACCENT,
+      green: INK_SECONDARY,
+      amber: INK_SECONDARY,
+      rose: SEVERITY_ROSE,
+    }[accent] ?? INK_MUTED
   );
 }
 

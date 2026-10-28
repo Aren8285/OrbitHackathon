@@ -10,7 +10,7 @@ RiskOps is a lightweight risk operations platform for modeling cyber risk, prior
 ## Quick start
 
 1. Copy `.env.example` to `.env` at the repository root.
-   an exact comma-separated `CORS_ORIGINS` list (for example,
+   Set an exact comma-separated `CORS_ORIGINS` list (for example,
    `http://localhost:3000`). No wildcard or automatic localhost-port allowance exists.
    Create `frontend/.env.local` with the **same** `DEMO_API_TOKEN` and
    `BACKEND_API_URL=http://127.0.0.1:8000`. These are server-only variables;
@@ -125,8 +125,11 @@ and cover missing/wrong/correct tokens, company isolation, cross-company writes,
 read-only GET behavior, upload/AI rate limits, and CORS. From `frontend/`, run
 `npm run build` to validate the production bundle. If the local Turbopack
 worker crashes, `npm run build -- --webpack` uses the alternative Next.js
-builder. Proxy regressions run with `node --test tests/api-proxy.test.mjs`
-from `frontend/`.
+builder. Frontend unit and proxy tests run with `node --test tests/*.test.mjs`
+from `frontend/`. The browser demo flow runs with `npm run test:e2e` after
+installing Playwright's Chromium browser. It starts isolated local servers and
+uses a temporary SQLite database; `frontend/.env.local` must contain the shared
+demo token.
 
 ## Scenario data and task schema upgrade
 

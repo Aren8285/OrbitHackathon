@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Bar, BarChart, LabelList, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { api, mapApiError, type AssetRuntime, type Control, type OptimizerRecommendationRuntime } from '@/lib';
 import { formatCurrencyCompact } from '@/lib/format';
+import { ACCENT, INK_SECONDARY } from '@/lib/chart-colors';
 
 const money = (value: number) => formatCurrencyCompact(value, {compactMin: 2});
 import BudgetSlider from '@/components/BudgetSlider';
@@ -94,7 +95,7 @@ export default function BudgetOptimizerPage() {
       </div>
       <div className="risk-panel h-64 p-4"><ResponsiveContainer width="100%" height="100%">
         <BarChart data={[{name:'Before', loss:result.expected_loss_before/100000},{name:'Proposed',loss:result.expected_loss_after/100000}]}>
-          <XAxis dataKey="name" tick={{fontSize: 12}}/><YAxis tick={{fontSize: 12}} label={{value:'INR lakh',angle:-90,position:'insideLeft',fontSize:12}}/><Tooltip contentStyle={chartTooltip} formatter={value => [money(Number(value) * 100000), "Expected annual loss"]}/><Bar isAnimationActive={false} dataKey="loss" fill="#9cb7ca"><LabelList dataKey="loss" position="top" formatter={(value: unknown) => money(Number(value) * 100000)} fill="#bcc3ca" fontSize={12} /></Bar>
+          <XAxis dataKey="name" tick={{fontSize: 12}}/><YAxis tick={{fontSize: 12}} label={{value:'INR lakh',angle:-90,position:'insideLeft',fontSize:12}}/><Tooltip contentStyle={chartTooltip} formatter={value => [money(Number(value) * 100000), "Expected annual loss"]}/><Bar isAnimationActive={false} dataKey="loss" fill={ACCENT}><LabelList dataKey="loss" position="top" formatter={(value: unknown) => money(Number(value) * 100000)} fill={INK_SECONDARY} fontSize={12} /></Bar>
         </BarChart>
       </ResponsiveContainer></div>
       <div className="risk-panel p-5">

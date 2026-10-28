@@ -22,6 +22,7 @@ import {
   mapApiError,
 } from '@/lib';
 import CopilotPanel from '@/components/CopilotPanel';
+import { ACCENT, HAIRLINE, INK_SECONDARY, NEUTRAL_600, SEVERITY_AMBER } from '@/lib/chart-colors';
 import {
   cn,
   formatCurrency,
@@ -245,7 +246,7 @@ export default function ExecutiveDashboard() {
 
   /* Chart dressing shared by every Recharts panel on this page — hairline
    * grid, muted ticks, ledger tooltip. */
-  const chartGrid = '#303740';
+  const chartGrid = HAIRLINE;
   const chartTick = { fill: 'var(--ink-muted)', fontSize: 12 };
   const chartTooltip = {
     background: 'var(--surface-panel)',
@@ -323,9 +324,9 @@ export default function ExecutiveDashboard() {
               <XAxis dataKey="loss" type="number" domain={[(sim.histogram[0]?.low_inr ?? 0)/100000, (sim.histogram[39]?.high_inr ?? 100000)/100000]} tick={chartTick} tickFormatter={value => `${Number(value).toFixed(0)}L`} />
               <YAxis tick={chartTick} />
               <Tooltip contentStyle={chartTooltip} labelFormatter={value => formatCurrencyCompact(Number(value) * 100_000)} />
-              <Bar isAnimationActive={false} dataKey="count" fill="#9cb7ca" />
-              <ReferenceLine x={sim.p50_inr / 100000} label={{value:"P50", position:"top", fill:"#bcc3ca", fontSize:12, fontFamily:'var(--font-mono), monospace'}} stroke="#bcc3ca" strokeDasharray="3 3" />
-              <ReferenceLine x={sim.p95_inr / 100000} label={{value:"P95", position:"top", fill:"#c4ad7d", fontSize:12, fontFamily:'var(--font-mono), monospace'}} stroke="#c4ad7d" strokeDasharray="3 3" />
+              <Bar isAnimationActive={false} dataKey="count" fill={ACCENT} />
+              <ReferenceLine x={sim.p50_inr / 100000} label={{value:"P50", position:"top", fill:INK_SECONDARY, fontSize:12, fontFamily:'var(--font-mono), monospace'}} stroke={INK_SECONDARY} strokeDasharray="3 3" />
+              <ReferenceLine x={sim.p95_inr / 100000} label={{value:"P95", position:"top", fill:SEVERITY_AMBER, fontSize:12, fontFamily:'var(--font-mono), monospace'}} stroke={SEVERITY_AMBER} strokeDasharray="3 3" />
             </BarChart>
           </ResponsiveContainer>
         </Panel>
@@ -342,7 +343,7 @@ export default function ExecutiveDashboard() {
               <YAxis dataKey="name" type="category" tick={{ ...chartTick, fontSize: 12 }} width={112} tickLine={false} />
               <Tooltip contentStyle={chartTooltip} />
               <Bar dataKey="priority" fill="var(--accent)" radius={0} isAnimationActive={false}>
-                <LabelList dataKey="priority" position="right" formatter={(value: unknown) => Number(value).toFixed(2)} fill="#bcc3ca" fontSize={12} />
+                <LabelList dataKey="priority" position="right" formatter={(value: unknown) => Number(value).toFixed(2)} fill={INK_SECONDARY} fontSize={12} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -372,9 +373,9 @@ export default function ExecutiveDashboard() {
                 labelStyle={{ color: 'var(--ink-secondary)' }}
               />
               <Bar isAnimationActive={false} dataKey="residual" radius={[4, 4, 0, 0]}>
-                <Cell fill="#65707a" />
-                <Cell fill="#9cb7ca" />
-                <LabelList dataKey="residual" position="top" formatter={(value: unknown) => formatCurrencyCompact(Number(value) * 100000)} fill="#bcc3ca" />
+                <Cell fill={NEUTRAL_600} />
+                <Cell fill={ACCENT} />
+                <LabelList dataKey="residual" position="top" formatter={(value: unknown) => formatCurrencyCompact(Number(value) * 100000)} fill={INK_SECONDARY} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
