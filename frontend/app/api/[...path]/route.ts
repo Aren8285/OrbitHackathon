@@ -23,9 +23,19 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
   }
   const token = process.env.DEMO_API_TOKEN;
   if (!token) return Response.json({ detail: 'Demo access is not configured' }, { status: 503 });
-  const backend = process.env.BACKEND_API_URL ?? 'http://127.0.0.1:8000';
-  const target = new URL(path[0] === 'health' ? '/health' : `/api/${path.map(encodeURIComponent).join('/')}`, backend);
-  target.search = request.nextUrl.search;
+  const backend = process.env.BACKEND_API_URL ?? (process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:8000');
+  let target: URL;
+  try {
+    const backendUrl = new URL(backend.trim());
+    if (backendUrl.protocol !== 'http:' && backendUrl.protocol !== 'https:') throw new TypeError();
+    if (backendUrl.origin === browserOrigin) {
+      return Response.json({ detail: 'Backend URL points to the frontend; set it to the FastAPI service URL' }, { status: 503 });
+    }
+    target = new URL(path[0] === 'health' ? '/health' : `/api/${path.map(encodeURIComponent).join('/')}`, backendUrl);
+    target.search = request.nextUrl.search;
+  } catch {
+    return Response.json({ detail: 'Backend URL is missing or invalid; set BACKEND_API_URL to the FastAPI service URL' }, { status: 503 });
+  }
   const headers = new Headers({ accept: 'application/json', 'X-Demo-Token': token });
   const contentType = request.headers.get('content-type');
   if (contentType) headers.set('content-type', contentType);
