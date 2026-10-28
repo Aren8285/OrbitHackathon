@@ -39,18 +39,50 @@ def test_env_settings_and_no_openai_default(tmp_path, monkeypatch):
 
 def test_header_payload_and_timeout(monkeypatch):
     configure(monkeypatch)
+    monkeypatch.setattr(settings, 'gemini_model', 'gemini-3.8-flash')
     def post(url, **kwargs):
-        assert url == llm.BASE_URL + '/models/gemini-primary:generateContent'
+        assert url == llm.BASE_URL + '/models/gemini-3.8-flash:generateContent'
         assert settings.gemini_api_key not in url
         assert kwargs['headers'] == {'x-goog-api-key': settings.gemini_api_key}
         assert kwargs['timeout'] == settings.llm_timeout_seconds
         body = kwargs['json']
         assert 'systemInstruction' in body and 'contents' in body
+        assert 'temperature' not in body['generationConfig']
+        assert body['generationConfig']['maxOutputTokens'] == 2048
+        assert body['generationConfig']['thinkingConfig'] == {'thinkingLevel': 'low'}
         sent = json.loads(body['contents'][0]['parts'][0]['text'])
         assert sent['expected_annual_loss_inr'] == 10179000 and sent['expected_loss_display'] == '₹1.02 Cr'
         return completion()
     mock_gemini_post(monkeypatch, post)
-    assert llm.call_llm(*llm.build_prompts({'expected_annual_loss_inr': 10179000}))[1] == 'gemini-primary'
+    assert llm.call_llm(*llm.build_prompts({'expected_annual_loss_inr': 10179000}))[1] == 'gemini-3.8-flash'
+
+
+def test_gemini_25_fallback_uses_its_supported_thinking_config(monkeypatch):
+    configure(monkeypatch)
+    monkeypatch.setattr(settings, 'gemini_model', 'gemini-3.8-flash')
+    monkeypatch.setattr(settings, 'gemini_fallback_models', ['gemini-2.5-flash'])
+    captured = []
+
+    def post(url, **kwargs):
+        model = url.split('/models/')[1].split(':')[0]
+        captured.append((model, kwargs['json']['generationConfig']))
+        if model == 'gemini-3.8-flash':
+            return httpx.Response(404)
+        return completion()
+
+    mock_gemini_post(monkeypatch, post)
+    assert llm.call_llm('system', '{}')[1] == 'gemini-2.5-flash'
+    assert captured[1][1]['thinkingConfig'] == {'thinkingBudget': 0}
+    assert 'temperature' not in captured[1][1]
+
+
+def test_non_stop_finish_reason_is_safely_reported(monkeypatch):
+    configure(monkeypatch)
+    monkeypatch.setattr(settings, 'gemini_fallback_models', [])
+    mock_gemini_post(monkeypatch, lambda *_args, **_kwargs: httpx.Response(
+        200, json={'candidates': [{'finishReason': 'MAX_TOKENS', 'content': {'parts': [{'text': 'partial'}]}}]}))
+    with pytest.raises(llm.LLMError, match='finish reason MAX_TOKENS'):
+        llm.call_llm('system', '{}')
 
 
 @pytest.mark.parametrize('failure', ['timeout', 500, 503])

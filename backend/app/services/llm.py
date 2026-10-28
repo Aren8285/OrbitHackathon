@@ -260,12 +260,17 @@ async def _call_models(system_prompt, user_prompt, validation_metrics=None):
     chain = configured_chain()
     if not chain:
         raise LLMError('No Gemini models configured')
-    payload = dict(systemInstruction={'parts': [{'text': system_prompt}]},
-                   contents=[{'role': 'user', 'parts': [{'text': user_prompt}]}],
-                   generationConfig={'temperature': 0.2, 'maxOutputTokens': 1024})
     invalid_reply_retry_used = False
     async with httpx.AsyncClient() as client:
         for model in chain:
+            # Gemini 3.x rejects legacy sampling parameters such as temperature.
+            # Keep the generation configuration compatible with each model family
+            # and use low/no thinking so a short explanation doesn't consume its
+            # entire output-token budget before producing user-visible text.
+            thinking = {'thinkingLevel': 'low'} if model.startswith('gemini-3') else {'thinkingBudget': 0}
+            payload = dict(systemInstruction={'parts': [{'text': system_prompt}]},
+                           contents=[{'role': 'user', 'parts': [{'text': user_prompt}]}],
+                           generationConfig={'maxOutputTokens': 2048, 'thinkingConfig': thinking})
             for attempt in range(2):
                 try:
                     async with asyncio.timeout(settings.llm_timeout_seconds):
@@ -289,9 +294,14 @@ async def _call_models(system_prompt, user_prompt, validation_metrics=None):
                 try:
                     candidate = response.json()['candidates'][0]
                     text = ''.join(p['text'] for p in candidate['content']['parts'] if 'text' in p and not p.get('thought')).strip()
-                    if candidate.get('finishReason', 'STOP') != 'STOP':
-                        log_reply_rejection('other', 'incomplete_completion', text)
-                        raise LLMError('Gemini completion blocked or incomplete')
+                    finish_reason = candidate.get('finishReason', 'STOP')
+                    if finish_reason != 'STOP':
+                        safe_reasons = {'MAX_TOKENS', 'SAFETY', 'RECITATION', 'BLOCKLIST',
+                                        'PROHIBITED_CONTENT', 'SPII', 'MALFORMED_FUNCTION_CALL',
+                                        'OTHER', 'FINISH_REASON_UNSPECIFIED'}
+                        finish_reason = finish_reason if finish_reason in safe_reasons else 'OTHER'
+                        log_reply_rejection('other', 'incomplete_completion:' + finish_reason, text)
+                        raise LLMError('Gemini completion stopped with finish reason ' + finish_reason)
                 except (ValueError, KeyError, IndexError, TypeError):
                     log_reply_rejection('other', 'invalid_completion')
                     raise LLMError('Gemini returned an invalid completion') from None
