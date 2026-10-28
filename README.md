@@ -42,6 +42,35 @@ RiskOps is a lightweight risk operations platform for modeling cyber risk, prior
    docker compose up --build
    ```
 
+## Deploying to Railway
+
+Railway can host the Next.js and FastAPI containers and mount persistent storage
+for SQLite. Deploy two services from this repository:
+
+1. Create a Railway project and connect the GitHub repository.
+2. Create `riskops-api` from the repository root. Set its Dockerfile path to
+   `backend/Dockerfile`, add a volume mounted at `/data`, and set these runtime
+   variables in Railway (never commit their values):
+   `PORT=8000`, `DATABASE_URL=sqlite:////data/riskops.db`, a strong
+   `DEMO_API_TOKEN`, `SECRET_KEY`, `CORS_ORIGINS`, and the Gemini provider/key/model
+   settings. Keep one backend replica because SQLite and the in-memory rate
+   limits are designed for a single process.
+3. Create `riskops-web` from the same repository with root directory `/frontend`.
+   It uses the production Dockerfile. Set `BACKEND_API_URL` to
+   `http://riskops-api.railway.internal:8000` and set the same
+   `DEMO_API_TOKEN` used by the backend.
+4. Generate a public domain for `riskops-web`, then set backend
+   `CORS_ORIGINS` to that exact HTTPS origin and redeploy the API. The backend
+   does not need a public domain; the Next.js server calls it over Railway's
+   private network.
+5. Open the frontend URL and click **Load FinPay demo**. The demo data is
+   fictional; the seed button populates the persistent database.
+
+Railway volumes persist database files across deployments. A Railway volume
+requires a paid plan; check current pricing before enabling billing. See
+[Railway volumes](https://docs.railway.com/volumes) and
+[Railway pricing](https://docs.railway.com/pricing/plans).
+
 SQLite is the only supported database. `DATABASE_URL` defaults to
 `sqlite:///./backend/riskops.db`; use a writable, persistent directory for deployed data.
 Relative SQLite paths resolve against the repository root, so root and backend
