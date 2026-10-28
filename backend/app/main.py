@@ -4,7 +4,7 @@ from app.services import llm
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 
 from app import models, schemas
 from app.config import settings
@@ -81,7 +81,8 @@ app.include_router(api)
 def health(db=Depends(get_db)):
     """Liveness + readiness: verifies the database is reachable."""
     try:
-        db.execute(text('SELECT 1'))
+        # ORM expression instead of literal SQL text (security.md: no string-built SQL).
+        db.execute(select(1))
         counts = {
             'assets': db.scalar(select(func.count()).select_from(models.Asset)) or 0,
             'vulnerabilities': db.scalar(select(func.count()).select_from(models.Vulnerability)) or 0,

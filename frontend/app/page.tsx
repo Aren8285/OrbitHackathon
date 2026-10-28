@@ -151,6 +151,7 @@ export default function ExecutiveDashboard() {
   }, [data]);
 
   const topRisks = useMemo(() => data?.summary.top_risks.slice(0, 5) ?? [], [data]);
+  const unmodeledRisks = useMemo(() => (data?.summary.unmodeled_risks ?? []).slice(0, 6), [data]);
 
   const beforeAfter = useMemo(() => {
     if (!data) return [];
@@ -410,6 +411,29 @@ export default function ExecutiveDashboard() {
             </table></div>
           )}
         </Panel>
+
+        {unmodeledRisks.length > 0 && (
+          <Panel
+            title="Not modelled"
+            action={
+              <span className="text-xs text-slate-500">
+                linked risk scenarios missing
+              </span>
+            }
+          >
+            <ul className="divide-y divide-[color:var(--hairline)]">
+              {unmodeledRisks.map((r) => (
+                <li key={r.asset_id} className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <div className="text-sm text-[color:var(--ink-secondary)]">{r.asset_name}</div>
+                    <div className="risk-id text-slate-400">{r.asset_id} · {r.reason ?? 'no modeled loss'}</div>
+                  </div>
+                  <span className={priorityColor(r.priority_label)}>{r.priority_label}</span>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        )}
       </div>
 
       <Panel

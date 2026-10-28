@@ -7,7 +7,7 @@ assumption (default = asset criticality x IMPACT_REFERENCE_INR), stored in
 the impact_assumptions table and editable through the /assumptions API.
 """
 
-from typing import List
+from typing import Dict, List
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
@@ -43,6 +43,15 @@ def get_assumption(db: Session, asset: models.Asset) -> models.ImpactAssumption:
             basis='default',
         )
     return assumption
+
+
+def assumption_impact_map(db: Session) -> Dict[int, int]:
+    """One query for every saved assumption: asset_row_id -> assumed_impact_inr.
+    Replaces the per-asset/per-finding selects that dominated seed timing."""
+    return {
+        row.asset_row_id: row.assumed_impact_inr
+        for row in db.scalars(select(models.ImpactAssumption)).all()
+    }
 
 
 def get_all_assumptions(db: Session) -> list:
@@ -100,6 +109,7 @@ def findings(db: Session):
 def finding_rankings(db: Session, open_only: bool = True) -> List[dict]:
     """Per-finding technical risk and priority ranking, highest first."""
     rows: List[dict] = []
+    assumption_map = assumption_impact_map(db)  # one query, not one per finding
     for vuln in findings(db):
         if open_only and vuln.status != 'open':
             continue
@@ -113,8 +123,10 @@ def finding_rankings(db: Session, open_only: bool = True) -> List[dict]:
             vuln.patch_age_days,
         )
         technical_risk = scoring.compute_technical_risk(vuln.cvss_score, exposure, criticality)
-        assumption = get_assumption(db, asset)
-        financial_impact = scoring.financial_impact_score(assumption.assumed_impact_inr)
+        assumed_impact_inr = assumption_map.get(asset.id)
+        if assumed_impact_inr is None:
+            assumed_impact_inr = int(round(criticality * scoring.DEFAULT_FULL_IMPACT_INR))
+        financial_impact = scoring.financial_impact_score(assumed_impact_inr)
         priority = scoring.compute_priority(
             enrichment_result['kev'],
             enrichment_result['epss'],
@@ -138,7 +150,7 @@ def finding_rankings(db: Session, open_only: bool = True) -> List[dict]:
                 'exposure': round(exposure, 4),
                 'technical_risk': round(technical_risk, 4),
                 'financial_impact': round(financial_impact, 4),
-                'assumed_impact_inr': assumption.assumed_impact_inr,
+                'assumed_impact_inr': assumed_impact_inr,
                 'priority': round(priority, 4),
                 'priority_label': scoring.classify_priority(enrichment_result['kev'], asset.internet_facing, criticality, priority),
                 'fictional': enrichment_result['fictional'],
@@ -172,8 +184,11 @@ def asset_rankings(db: Session, analytic_rows=None) -> List[dict]:
         agg['max_priority'] = max(agg['max_priority'], row['priority'])
     # assets without open findings still appear, ranked lowest
     result: List[dict] = []
+    assumption_map = assumption_impact_map(db)  # one query, not one per asset
     for asset in db.scalars(select(models.Asset)).all():
-        assumption = get_assumption(db, asset)
+        assumption = assumption_map.get(asset.id)
+        if assumption is None:
+            assumption = int(round(asset_criticality(asset) * scoring.DEFAULT_FULL_IMPACT_INR))
         criticality = asset_criticality(asset)
         agg = by_asset.get(asset.asset_id, {
             'open_findings': 0,
@@ -192,7 +207,7 @@ def asset_rankings(db: Session, analytic_rows=None) -> List[dict]:
                 'kev_findings': agg['kev_findings'],
                 'max_technical_risk': round(agg['max_technical_risk'], 4),
                 'max_priority': round(agg['max_priority'], 4),
-                'assumed_impact_inr': assumption.assumed_impact_inr,
+                'assumed_impact_inr': assumption,
                 'priority_label': min((row['priority_label'] for row in analytic_rows if row['asset_id'] == asset.asset_id), default='P3'),
                 'coverage': 'linked' if loss else 'none',
                 'coverage_reason': None if loss else 'No risk scenario is linked to this asset',
@@ -213,16 +228,32 @@ def summary(db: Session, portfolio_result=None, analytic_rows=None) -> dict:
     open_rows = [v for v in all_rows if v.status == 'open']
     ranked = analytic_rows if analytic_rows is not None else finding_rankings(db, open_only=True)
     assets = db.scalars(select(models.Asset)).all()
-    total_assumed = sum(get_assumption(db, asset).assumed_impact_inr for asset in assets)
+    assumption_map = assumption_impact_map(db)  # one query, not one per asset
+    total_assumed = 0
+    for asset in assets:
+        assumed = assumption_map.get(asset.id)
+        if assumed is None:
+            assumed = int(round(asset_criticality(asset) * scoring.DEFAULT_FULL_IMPACT_INR))
+        total_assumed += assumed
     from app.services import scenario_engine
     portfolio = portfolio_result if portfolio_result is not None else scenario_engine.portfolio(db)
     asset_rows = asset_rankings(db, analytic_rows=ranked)
-    top_risks = [
-        {key: row[key] for key in ('asset_id', 'asset_name', 'priority_label',
-                                   'expected_annual_loss_inr', 'p50_inr', 'p95_inr',
-                                   'coverage', 'coverage_reason')}
-        for row in asset_rows[:5]
-    ]
+    modeled_top_risks = []
+    unmodeled_risks = []
+    for row in asset_rows:
+        if row['coverage'] == 'linked' and row['expected_annual_loss_inr'] is not None and row['p95_inr'] is not None:
+            if len(modeled_top_risks) < 5:
+                modeled_top_risks.append(
+                    {key: row[key] for key in ('asset_id', 'asset_name', 'priority_label',
+                                               'expected_annual_loss_inr', 'p50_inr', 'p95_inr',
+                                               'coverage', 'coverage_reason')}
+                )
+        else:
+            unmodeled_risks.append(
+                {'asset_id': row['asset_id'], 'asset_name': row['asset_name'],
+                 'priority_label': row['priority_label'], 'coverage': row['coverage'],
+                 'reason': row['coverage_reason']}
+            )
     return {
         **{key: value for key, value in portfolio.items() if key != 'scenarios'},
         'overall_risk_score': round(sum(row['technical_risk'] for row in ranked) / len(ranked), 4) if ranked else 0.0,
@@ -238,7 +269,8 @@ def summary(db: Session, portfolio_result=None, analytic_rows=None) -> dict:
             'assumed_exposure_inr is the sum of EDITABLE per-asset impact assumptions '
             '(default = criticality x 1 crore INR); it is not a measured or simulated loss.'
         ),
-        'top_risks': top_risks,
+        'top_risks': modeled_top_risks,
+        'unmodeled_risks': unmodeled_risks,
     }
 
 
@@ -265,10 +297,20 @@ def calculate(db, commit=True):
     from datetime import datetime, timedelta, timezone
     from app.config import PRIORITY_DUE_DAYS
     today = datetime.now(timezone(timedelta(hours=5, minutes=30))).date()
-    controls = {control.control_key: control for control in db.scalars(select(models.Control)).all()}
-    for task in db.scalars(select(models.RemediationTask)).all():
-        task.estimated_risk_reduction = scenario_engine.marginal_reduction(db, controls[task.control_key], task.asset_id)
-        finding = db.scalar(select(models.Vulnerability).where(models.Vulnerability.id == task.vulnerability_id)) if task.vulnerability_id else None
+    tasks = db.scalars(select(models.RemediationTask)).all()
+    reductions = scenario_engine.marginal_reduction_map(
+        db, {(task.control_key, task.asset_id) for task in tasks}
+    )
+    vuln_ids = {task.vulnerability_id for task in tasks if task.vulnerability_id}
+    findings_by_id = {}
+    if vuln_ids:
+        findings_by_id = {
+            vuln.id: vuln
+            for vuln in db.scalars(select(models.Vulnerability).where(models.Vulnerability.id.in_(vuln_ids))).all()
+        }
+    for task in tasks:
+        task.estimated_risk_reduction = reductions[(task.control_key, task.asset_id)]
+        finding = findings_by_id.get(task.vulnerability_id) if task.vulnerability_id else None
         row = ranked.get((task.asset_id, finding.cve_id)) if finding else None
         priority = row['priority_label'] if row else task.priority
         if priority != task.priority:

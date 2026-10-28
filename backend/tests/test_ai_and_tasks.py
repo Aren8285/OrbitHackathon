@@ -152,6 +152,119 @@ class TestCopilotSecurity:
 
 
 # ---------------------------------------------------------------------------
+# AI reply validation - regression rules for ungrounded content
+# ---------------------------------------------------------------------------
+
+class TestReplyContentValidation:
+    def _metrics(self, client):
+        seed_full(client)
+        return client.get('/api/ai/metrics').json()
+
+    def test_spelled_out_number_rejected(self, client):
+        metrics = self._metrics(client)
+        rendered, rejection = llm.render_reply('There are sixty open vulnerabilities.', metrics)
+        assert rendered is None
+        assert rejection[0] == 'unknown_number'
+
+    def test_spelled_out_hyphenated_and_in_words_rejected(self, client):
+        metrics = self._metrics(client)
+        for text in ('Roughly a dozen assets are affected.',
+                     'About half of the controls are proposed.',
+                     'We expect sixty-five findings this quarter.',
+                     'Exposure sits at about one crore of loss.'):
+            rendered, rejection = llm.render_reply(text, metrics)
+            assert rendered is None, text
+            assert rejection[0] == 'unknown_number'
+
+    def test_digit_with_unit_rejected(self, client):
+        metrics = self._metrics(client)
+        rendered, rejection = llm.render_reply('Losses are around 5 crore.', metrics)
+        assert rendered is None
+        assert rejection[0] == 'unknown_number'
+
+    def test_model_typed_currency_rejected(self, client):
+        metrics = self._metrics(client)
+        rendered, rejection = llm.render_reply('Expected loss is ₹3 Cr.', metrics)
+        assert rendered is None
+        # either the digit or the currency rule may fire first; both reject
+        assert rejection[0] in ('unknown_number', 'unknown_currency')
+        for text in ('Expected loss is INR 3 Cr.', 'Rs 300000 expected.', 'About $300000 lost.',
+                     'Losses near USD 300000.'):
+            rendered, rejection = llm.render_reply(text, metrics)
+            assert rendered is None, text
+            assert rejection[0] in ('unknown_number', 'unknown_currency'), (text, rejection)
+
+    def test_model_typed_currency_code_alone_rejected(self, client):
+        metrics = self._metrics(client)
+        rendered, rejection = llm.render_reply('Losses are near USD.', metrics)
+        assert rendered is None
+        assert rejection[0] == 'unknown_currency'
+
+    def test_placeholder_only_reply_accepted(self, client):
+        metrics = self._metrics(client)
+        rendered, rejection = llm.render_reply(
+            'Expected loss is {expected_loss} across {open_vulns} open findings.', metrics)
+        assert rejection is None
+        # substitution really happened and rendered only calculated values
+        assert '{' not in rendered
+        assert str(metrics['open_vulnerabilities']) in rendered
+
+    def test_priority_label_and_real_asset_id_accepted(self, client):
+        metrics = self._metrics(client)
+        asset_id = metrics['top_risks'][0]['asset_id']
+        rendered, rejection = llm.render_reply(
+            f'P0 tracking for {asset_id} is the top exposure.', metrics)
+        assert rejection is None, rejection
+
+    def test_precedence_spelled_beats_currency(self, client):
+        metrics = self._metrics(client)
+        rendered, rejection = llm.render_reply('five crore expected', metrics)
+        assert rendered is None
+        assert rejection[0] == 'unknown_number'
+
+    def test_model_spelled_number_never_reaches_client(self, client, monkeypatch):
+        seed_full(client)
+        ai_router._rate_hits.clear()
+
+        def fake_post(url, **kwargs):
+            class FakeResponse:
+                status_code = 200
+
+                def json(self):
+                    return {'candidates': [{'content': {'parts': [{'text': 'There are sixty open vulnerabilities.'}]}}]}
+            return FakeResponse()
+
+        monkeypatch.setattr(settings, 'gemini_api_key', 'sk-test')
+        mock_gemini_post(monkeypatch, fake_post)
+        resp = client.get('/api/ai/explain-risk')
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body['source'] == 'fallback'
+        assert 'sixty' not in body['explanation']
+
+    def test_model_typed_rupee_never_reaches_client(self, client, monkeypatch):
+        seed_full(client)
+        ai_router._rate_hits.clear()
+
+        def fake_post(url, **kwargs):
+            class FakeResponse:
+                status_code = 200
+
+                def json(self):
+                    return {'candidates': [{'content': {'parts': [{'text': 'Expected loss is ₹3 Cr.'}]}}]}
+            return FakeResponse()
+
+        monkeypatch.setattr(settings, 'gemini_api_key', 'sk-test')
+        mock_gemini_post(monkeypatch, fake_post)
+        resp = client.get('/api/ai/explain-risk')
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body['source'] == 'fallback'
+        # the model-typed reply was discarded and the template used instead
+        assert 'discarded' in body['fallback_reason']
+
+
+# ---------------------------------------------------------------------------
 # Remediation tasks - persistence + verification rules
 # ---------------------------------------------------------------------------
 

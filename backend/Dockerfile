@@ -10,4 +10,5 @@ COPY demo-data /workspace/demo-data
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Rate limits are process-local; the demo runs a single worker.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

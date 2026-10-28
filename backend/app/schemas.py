@@ -405,6 +405,16 @@ class RiskTopAsset(BaseModel):
     coverage_reason: Optional[str] = None
 
 
+class UnmodeledTopRisk(BaseModel):
+    """Assets without a modeled loss: excluded from top_risks, shown separately."""
+
+    asset_id: str
+    asset_name: str
+    priority_label: Literal['P0', 'P1', 'P2', 'P3']
+    coverage: Literal['linked', 'none'] = 'none'
+    reason: Optional[str] = None
+
+
 class RiskSummary(BaseModel):
     total_assets: int
     critical_assets: int
@@ -426,6 +436,7 @@ class RiskSummary(BaseModel):
     p99_inr: int
     histogram: List[Dict[str, int]]
     top_risks: List[RiskTopAsset] = Field(default_factory=list)
+    unmodeled_risks: List[UnmodeledTopRisk] = Field(default_factory=list)
 
 
 class FindingRanking(BaseModel):

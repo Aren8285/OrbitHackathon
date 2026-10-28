@@ -156,6 +156,7 @@ export interface RiskSummaryRuntime {
   assumed_exposure_inr: number;
   financial_note: string;
   top_risks: Array<{asset_id: string; asset_name: string; priority_label: 'P0' | 'P1' | 'P2' | 'P3'; expected_annual_loss_inr: number | null; p50_inr: number | null; p95_inr: number | null; coverage: 'linked' | 'none'; coverage_reason: string | null}>;
+  unmodeled_risks: Array<{asset_id: string; asset_name: string; priority_label: 'P0' | 'P1' | 'P2' | 'P3'; coverage: 'linked' | 'none'; reason: string | null}>;
 }
 
 // ---------------------------------------------------------------------------

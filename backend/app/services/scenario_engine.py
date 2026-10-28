@@ -177,3 +177,38 @@ def marginal_reduction(db, control, asset_id=None):
     before = sum(float(raw[row.id].mean()) * (1-combined_for(row, controls)) for row in scenarios)
     after = sum(float(raw[row.id].mean()) * (1-combined_for(row, controls, {control.control_key})) for row in scenarios)
     return max(0, int(round(before))-int(round(after)))
+
+
+def marginal_reduction_map(db, pairs):
+    """Batched marginal_reduction for many (control_key, asset_id) pairs.
+
+    Returns structurally identical results to calling marginal_reduction once
+    per pair (independent PERT draws are lru-cached, so repeated context
+    queries are the only cost that batching removes).
+    """
+    unique = sorted(set(pairs))
+    if not unique:
+        return {}
+    scenarios, controls, raw = context(db)
+    controls_by_key = {control.control_key: control for control in controls}
+    grouped = {}
+    for scenario in scenarios:
+        grouped.setdefault(scenario.asset_id, []).append(scenario)
+    base_loss = {
+        asset_id: sum(float(raw[row.id].mean()) * (1 - combined_for(row, controls)) for row in rows)
+        for asset_id, rows in grouped.items()
+    }
+    result = {}
+    for pair in unique:
+        control_key, asset_id = pair
+        control = controls_by_key.get(control_key)
+        rows = grouped.get(asset_id, [])
+        if control is None or not rows:
+            result[pair] = 0
+            continue
+        after = sum(
+            float(raw[row.id].mean()) * (1 - combined_for(row, controls, {control_key}))
+            for row in rows
+        )
+        result[pair] = max(0, int(round(base_loss[asset_id])) - int(round(after)))
+    return result

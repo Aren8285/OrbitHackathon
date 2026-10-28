@@ -9,7 +9,7 @@ RiskOps is a lightweight risk operations platform for modeling cyber risk, prior
 
 ## Quick start
 
-1. Copy `.env.example` to `.env` at the repository root. Set a long random `DEMO_API_TOKEN` and
+1. Copy `.env.example` to `.env` at the repository root.
    an exact comma-separated `CORS_ORIGINS` list (for example,
    `http://localhost:3000`). No wildcard or automatic localhost-port allowance exists.
    Create `frontend/.env.local` with the **same** `DEMO_API_TOKEN` and
@@ -26,7 +26,7 @@ RiskOps is a lightweight risk operations platform for modeling cyber risk, prior
    python -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
-   uvicorn app.main:app --reload
+   uvicorn app.main:app --reload --workers 1   # rate limits are process-local
    ```
 3. Start the dashboard:
    ```bash
@@ -108,10 +108,15 @@ Canonical routes include:
 - `/api/ai/explain-risk`, `/api/ai/executive-summary`, `/api/ai/metrics`
 - `/api/demo/seed` (POST, atomic full FinPay demo rebuild)
 
-All AI routes share a limit of 10 requests per minute. All upload routes share
-a separate limit of 10 per minute. Limits are process-local and shared across
-the demo; excess requests return 429 with `Retry-After`. Multiple server workers
-each have their own bucket.
+AI rate limits: `/api/ai/explain-risk` and `/api/ai/executive-summary` are each
+limited per client (10 requests/minute per client IP). `/api/ai/status` and
+`/api/ai/metrics` are not rate-limited because they do not call the model.
+Upload routes have a separate limit (10 requests/minute, shared across all
+uploads). Limits are process-local, so run a single worker in the demo (the
+image and quick-start pin `--workers 1`; the Compose dev command uses
+`--reload`, which also runs one application process); when scaling to multiple
+workers, use a shared store such as Redis for limit state instead. Excess
+requests return 429 with `Retry-After`.
 
 ## Validation
 
@@ -274,9 +279,9 @@ then records the latest accepted Gemini model. Template fallback does not erase
 that history.
 
 Both `/api/ai/explain-risk` and `/api/ai/executive-summary` return the answering
-model in `model`, or `"template"`. The frontend displays that value. All AI routes,
-including status and metrics, require the demo token and share the existing
-rate limit. The Next.js proxy allows the configured model chain to finish rather
+model in `model`, or `"template"`. The frontend displays that value. All AI
+routes, including the un-rate-limited status and metrics routes, require the
+demo token. The Next.js proxy allows the configured model chain to finish rather
 than imposing its normal 35-second timeout, while retaining browser cancellation.
 
 Both system instructions and the JSON prompt are fewer than 150 words; generated

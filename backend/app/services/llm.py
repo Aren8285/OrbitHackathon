@@ -18,6 +18,18 @@ _available_models = []
 _last_used_model = None
 NUMBER_RE = re.compile(r'[-+]?(?:\d[\d,]*(?:\.\d+)?|\.\d+)(?:[eE][-+]?\d+)?')
 # Tokenize spelled-out small numbers too; these receive no allowlist exemption.
+# Matches word forms standalone or hyphenated ("sixty-five"); word boundaries
+# stop at "-", so a single pattern covers both.
+SPELLED_NUMBER_RE = re.compile(
+    r'\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|'
+    r'eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|'
+    r'twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|'
+    r'hundred|thousand|lakh|crore|million|billion|dozen|half)\b',
+    re.IGNORECASE,
+)
+# Currency typed by the model itself. Placeholder substitution renders money
+# later, so any unit here appeared verbatim in the raw reply.
+CURRENCY_RE = re.compile(r'[\u20b9\u0024\u20ac\u00a3]|\b(?:INR|Rs|rs|USD|usd)\b')
 
 
 class LLMError(Exception):
@@ -198,6 +210,12 @@ def render_reply(text, metrics):
             scrubbed = re.sub(r'(?<![\w.-])' + re.escape(label) + r'(?![\w.-])', '', scrubbed)
     if NUMBER_RE.search(scrubbed):
         return None, ('unknown_number', 'reply contains digits outside approved placeholders, priority labels, and asset IDs')
+    spelled = SPELLED_NUMBER_RE.search(scrubbed)
+    if spelled:
+        return None, ('unknown_number', f'reply spells out a number ({spelled.group(0)}) instead of using a placeholder')
+    currency = CURRENCY_RE.search(scrubbed)
+    if currency:
+        return None, ('unknown_currency', 'reply contains a currency symbol/code that did not come from a placeholder')
     return rendered, None
 
 

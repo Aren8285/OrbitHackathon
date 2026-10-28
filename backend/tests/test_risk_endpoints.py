@@ -31,9 +31,40 @@ def test_summary_is_derived_from_seeded_database(db, client):
     )
     assert body['assumed_exposure_inr'] == expected_exposure
     assert 'assumption' in body['financial_note'].lower()
-    assert len(body['top_risks']) == 5
-    assert all({'asset_id', 'priority_label', 'expected_annual_loss_inr', 'p95_inr'} <= row.keys()
+    # top_risks holds only modeled entries; fewer than 5 is fine
+    assert len(body['top_risks']) <= 5
+    assert all(row['expected_annual_loss_inr'] is not None and row['p95_inr'] is not None
                for row in body['top_risks'])
+    assert all(row['coverage'] == 'linked' for row in body['top_risks'])
+    # anything without a modeled loss is listed separately, never with nulls
+    unmodeled = body['unmodeled_risks']
+    assert len(unmodeled) == body['total_assets'] - len(body['top_risks'])
+    assert all({'asset_id', 'asset_name', 'priority_label', 'reason'} <= row.keys() for row in unmodeled)
+    ids_modeled = {row['asset_id'] for row in body['top_risks']}
+    assert not ids_modeled & {row['asset_id'] for row in unmodeled}
+
+
+def test_summary_top_risks_excludes_unmodeled_and_lists_them_separately(client):
+    seeded = client.post('/api/demo/seed')
+    assert seeded.status_code == 200
+    body = client.get('/api/risk/summary').json()
+    A004 = 'A-004'
+    modeled_ids = {row['asset_id'] for row in body['top_risks']}
+    assert A004 not in modeled_ids  # coverage 'none' must never enter top_risks
+    assert any(row['asset_id'] == A004 for row in body['unmodeled_risks'])
+    for row in body.get('top_risks', []):
+        assert row['coverage'] == 'linked'
+        assert row['expected_annual_loss_inr'] is not None
+        assert row['p95_inr'] is not None
+    assets_list = client.get('/api/risk/assets').json()
+    expected_modeled = {a['asset_id'] for a in assets_list if a['coverage'] == 'linked'}
+    top_ids = {row['asset_id'] for row in body['top_risks']}
+    assert top_ids <= expected_modeled
+    unmodeled_ids = {row['asset_id'] for row in body['unmodeled_risks']}
+    assert not (top_ids & unmodeled_ids)
+    if expected_modeled - top_ids:
+        unmodeled_not_all = expected_modeled & unmodeled_ids
+        assert not unmodeled_not_all
 
 
 def test_payment_asset_detail_includes_same_scenario_loss_range(client):
